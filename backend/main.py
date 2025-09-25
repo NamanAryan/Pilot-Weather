@@ -19,7 +19,12 @@ def analyze_route(req: RouteRequest):
 
     metars = [fetch_metar(code) for code in req.airports]
     tafs = [fetch_taf(code) for code in req.airports]
-    notams = [fetch_notams(code) for code in req.airports]
+
+    # flatten NOTAMs
+    notams = []
+    for code in req.airports:
+        notams.extend(fetch_notams(code))
+
     pireps = fetch_pireps(req.airports)
 
     route_points = fetch_route(req.airports[0], req.airports[-1])

@@ -1,29 +1,21 @@
-import requests
+from models.route import RoutePoint
+from models.weather import Pirep
+from typing import List
 
-def fetch_route(airports: list) -> list:
+def fetch_route(src: str, dest: str) -> List[RoutePoint]:
     """
-    For hackathon: return waypoints as straight line between airports
-    Replace with OpenSky API if needed.
+    Placeholder: return a simple straight line route.
+    Later integrate OpenSky or flight plan API.
     """
-    # Ideally call OpenSky or FAA API here, mock for now:
-    mock_coords = {
-        "KJFK": (40.6413, -73.7781),
-        "KLAX": (33.9416, -118.4085),
-        "EGLL": (51.4700, -0.4543),
-        "VOBL": (13.1989, 77.7063)
-    }
-    route = []
-    for icao in airports:
-        lat, lon = mock_coords.get(icao, (0, 0))
-        route.append({"icao": icao, "lat": lat, "lon": lon})
-    return route
-
-def map_hazards(route: list) -> list:
-    """
-    Mock hazards - in real use, integrate SIGMET API
-    """
-    hazards = [
-        {"lat": route[0]["lat"]+1, "lon": route[0]["lon"]+1,
-         "type": "Thunderstorm", "severity": "Severe", "flight_level": "FL350"}
+    # fake demo route
+    return [
+        RoutePoint(lat=40.6413, lon=-73.7781, altitude=0),    # JFK
+        RoutePoint(lat=51.4700, lon=-0.4543, altitude=35000)  # LHR
     ]
+
+def map_hazards(route: List[RoutePoint], pireps: List[Pirep]) -> List[str]:
+    hazards = []
+    for p in pireps:
+        if p.altitude and 28000 <= p.altitude <= 36000:
+            hazards.append(f"Turbulence reported at FL{p.altitude//100} near {p.location}")
     return hazards

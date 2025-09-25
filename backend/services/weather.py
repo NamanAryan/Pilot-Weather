@@ -1,32 +1,72 @@
 import requests
-import os
+from models.weather import Metar, Taf, Pirep
+from models.notam import Notam
 
-BASE_AVWX = "https://avwx.rest/api"
+AVWX_BASE = "https://avwx.rest/api"
+AVWX_TOKEN = "YOUR_AVWX_API_KEY"  # put in .env later
 
-AVWX_TOKEN = os.getenv("AVWX_TOKEN")
+headers = {"Authorization": f"Bearer {AVWX_TOKEN}"}
 
-headers = {"Authorization": f"BEARER {AVWX_TOKEN}"}
+def fetch_metar(icao: str) -> Metar:
+    url = f"{AVWX_BASE}/metar/{icao}"
+    r = requests.get(url, headers=headers)
+    if r.status_code != 200:
+        return Metar(station=icao, raw_text="N/A")
+    data = r.json()
+    return Metar(
+        station=icao,
+        raw_text=data.get("raw", ""),
+        temperature=data.get("temperature", {}).get("value"),
+        wind=data.get("wind_direction", {}).get("repr"),
+        visibility=data.get("visibility", {}).get("repr"),
+        conditions=", ".join([wx["value"] for wx in data.get("wx_codes", [])]) if data.get("wx_codes") else None
+    )
 
-def fetch_metar(icao: str) -> dict:
-    url = f"{BASE_AVWX}/metar/{icao}"
-    res = requests.get(url, headers=headers)
-    return res.json() if res.ok else {}
+def fetch_taf(icao: str) -> Taf:
+    url = f"{AVWX_BASE}/taf/{icao}"
+    r = requests.get(url, headers=headers)
+    if r.status_code != 200:
+        return Taf(station=icao, raw_text="N/A")
+    data = r.json()
+    return Taf(
+        station=icao,
+        raw_text=data.get("raw", ""),
+        forecast=data.get("forecast", {}).get("summary")
+    )
 
-def fetch_taf(icao: str) -> dict:
-    url = f"{BASE_AVWX}/taf/{icao}"
-    res = requests.get(url, headers=headers)
-    return res.json() if res.ok else {}
+def fetch_notams(icao: str) -> list[Notam]:
+    url = f"{AVWX_BASE}/notam/{icao}"
+    r = requests.get(url, headers=headers)
+    if r.status_code != 200:
+        return []
+    data = r.json()
+    return [
+        Notam(
+            id=item.get("id", "N/A"),
+            airport=icao,
+            text=item.get("raw", ""),
+            critical="RWY" in item.get("raw", "") or "TFR" in item.get("raw", "")
+        )
+        for item in data
+    ]
 
-def fetch_notams(icao: str) -> list:
-    url = f"{BASE_AVWX}/notam/{icao}"
-    res = requests.get(url, headers=headers)
-    return res.json() if res.ok else []
-
-def fetch_pireps(lat: float, lon: float) -> list:
+def fetch_pireps(airports: list[str]) -> list[Pirep]:
     """
-    Fetch PIREPs within ~2 degree box
+    Simplified: fetch PIREPs around airports by ICAO
+    (you can expand later with bounding boxes).
     """
-    bbox = f"{lat-2},{lon-2},{lat+2},{lon+2}"
-    url = f"{BASE_AVWX}/pirep?bbox={bbox}"
-    res = requests.get(url, headers=headers)
-    return res.json() if res.ok else []
+    pireps: list[Pirep] = []
+    for icao in airports:
+        url = f"{AVWX_BASE}/pirep/{icao}"
+        r = requests.get(url, headers=headers)
+        if r.status_code != 200:
+            continue
+        data = r.json()
+        pireps.append(
+            Pirep(
+                report=data.get("raw", "N/A"),
+                altitude=data.get("altitude", {}).get("value"),
+                location=icao
+            )
+        )
+    return pireps
