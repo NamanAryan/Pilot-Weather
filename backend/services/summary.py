@@ -8,8 +8,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# Use the correct Gemini API endpoint
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
 
 print(f"🤖 GEMINI_API_KEY: {GEMINI_API_KEY}")
 
@@ -26,53 +24,99 @@ def summarize_weather(
     airports = [m.station for m in metars]
     route_str = " → ".join(airports)
     
-    # Create a basic summary first (fallback)
-    basic_summary = f"""Route: {route_str}
-Weather: {len(metars)} airports analyzed
-Conditions: Mixed conditions reported
-NOTAMs: {len(notams)} active notices
-Recommendation: Review detailed weather data"""
+    # Create a detailed basic summary from actual weather data
+    summary_lines = [f"Route: {route_str}"]
+    
+    # Process METAR data for summary
+    for metar in metars:
+        if metar.raw_text and metar.raw_text != "":
+            # Extract basic conditions from METAR
+            conditions = []
+            if "CLR" in metar.raw_text or "SKC" in metar.raw_text:
+                conditions.append("Clear")
+            elif "OVC" in metar.raw_text:
+                conditions.append("Overcast")
+            elif "BKN" in metar.raw_text:
+                conditions.append("Broken clouds")
+            elif "SCT" in metar.raw_text:
+                conditions.append("Scattered clouds")
+            elif "FEW" in metar.raw_text:
+                conditions.append("Few clouds")
+            
+            # Extract visibility
+            if "9999" in metar.raw_text:
+                conditions.append("10+ mi vis")
+            elif "CAVOK" in metar.raw_text:
+                conditions.append("CAVOK")
+            
+            condition_str = ", ".join(conditions) if conditions else "Weather data available"
+            summary_lines.append(f"{metar.station}: {condition_str}")
+    
+    # Add NOTAM and PIREP info
+    if notams:
+        critical_notams = [n for n in notams if n.critical]
+        if critical_notams:
+            summary_lines.append(f"⚠️ {len(critical_notams)} critical NOTAMs")
+        else:
+            summary_lines.append(f"📋 {len(notams)} NOTAMs active")
+    
+    if pireps:
+        summary_lines.append(f"✈️ {len(pireps)} pilot reports available")
+    
+    basic_summary = "\n".join(summary_lines)
     
     if not GEMINI_API_KEY:
         print("❌ No Gemini API key found")
         return basic_summary, "Configure GEMINI_API_KEY for AI-powered summaries"
     
     try:
-        # Prepare weather summary for AI
-        weather_summary = []
-        for metar in metars:
-            weather_summary.append(f"{metar.station}: {metar.raw_text}")
+        print("🤖 Calling Gemini 2.5 Flash API...")
         
-        prompt = f"""You are a professional flight dispatcher. Create a concise pilot briefing.
+        # Use the correct model name from the documentation
+        model = "gemini-2.5-flash"
+        
+        prompt = f"""You are a professional flight dispatcher. Create a concise pilot weather briefing.
 
 Route: {route_str}
 
-Current Weather:
-{chr(10).join(weather_summary)}
+Current Weather Reports:
+{chr(10).join([f"{m.station}: {m.raw_text}" for m in metars if m.raw_text])}
 
-Provide a brief 4-line summary focusing on:
-1. Overall weather conditions
-2. Key hazards or concerns
-3. Visibility and winds
-4. Go/No-go recommendation"""
+Active NOTAMs: {len(notams)}
+Pilot Reports: {len(pireps)}
+
+Provide a brief 4-line pilot briefing focusing on:
+Start directly with the answer, no filler lines
+1. Brief summary of weather condition from first airport
+2. Brief summary of weather condition from second airport
+3. Brief of NOTAMs or SIGMETs if any
+4. Any reported PIREPs
+5. Any hazards along the route"""
         
-        print("🤖 Calling Gemini API...")
-        
+        # Use the correct API format from documentation
         payload = {
             "contents": [
                 {
                     "parts": [
-                        {"text": prompt}
+                        {
+                            "text": prompt
+                        }
                     ]
                 }
             ]
         }
         
-        # Use the correct API URL with your key
-        url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
-        print(f"🌐 Gemini URL: {url[:80]}...")  # Don't log the full key
+        # Use the correct URL format from the REST example
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         
-        response = requests.post(url, json=payload, timeout=30)
+        headers = {
+            "x-goog-api-key": GEMINI_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        print(f"🌐 Making request to: {url}")
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
         
         print(f"🤖 Gemini Response Status: {response.status_code}")
         
@@ -82,15 +126,21 @@ Provide a brief 4-line summary focusing on:
             return basic_summary, f"AI summary failed - using basic summary"
         
         result = response.json()
+        print(f"📄 Gemini Response: {result}")
         
         # Extract the AI response
         if "candidates" in result and len(result["candidates"]) > 0:
-            ai_text = result["candidates"][0]["content"]["parts"][0]["text"]
-            print("✅ Successfully got AI summary")
-            return ai_text, ai_text
+            candidate = result["candidates"][0]
+            if "content" in candidate and "parts" in candidate["content"]:
+                ai_text = candidate["content"]["parts"][0]["text"]
+                print("✅ Successfully got AI summary")
+                return ai_text.strip(), ai_text.strip()
+            else:
+                print("❌ Unexpected response structure")
+                return basic_summary, "AI response format error"
         else:
-            print("❌ Unexpected Gemini response format")
-            return basic_summary, "AI response format error"
+            print("❌ No candidates in response")
+            return basic_summary, "No AI response generated"
         
     except requests.exceptions.Timeout:
         print("⏱️ Gemini API request timed out")
