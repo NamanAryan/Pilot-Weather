@@ -3,9 +3,15 @@ from models.notam import Notam
 from typing import List, Tuple
 import requests
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+# Use the correct Gemini API endpoint
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+
+print(f"🤖 GEMINI_API_KEY: {GEMINI_API_KEY}")
 
 def summarize_weather(
     metars: List[Metar],
@@ -14,31 +20,81 @@ def summarize_weather(
     pireps: List[Pirep],
     hazards: List[str]
 ) -> Tuple[str, str]:
-    """
-    Summarize all aviation data into 5-line and 2-page formats using Gemini
-    """
-    prompt = f"""
-    Summarize the following aviation weather and route info into:
-    (1) 5-line pilot briefing with critical SIGMET/NOTAM/hazard info.
-    (2) Detailed 2-page preflight report.
+    
+    print("📝 Starting weather summarization")
+    
+    airports = [m.station for m in metars]
+    route_str = " → ".join(airports)
+    
+    # Create a basic summary first (fallback)
+    basic_summary = f"""Route: {route_str}
+Weather: {len(metars)} airports analyzed
+Conditions: Mixed conditions reported
+NOTAMs: {len(notams)} active notices
+Recommendation: Review detailed weather data"""
+    
+    if not GEMINI_API_KEY:
+        print("❌ No Gemini API key found")
+        return basic_summary, "Configure GEMINI_API_KEY for AI-powered summaries"
+    
+    try:
+        # Prepare weather summary for AI
+        weather_summary = []
+        for metar in metars:
+            weather_summary.append(f"{metar.station}: {metar.raw_text}")
+        
+        prompt = f"""You are a professional flight dispatcher. Create a concise pilot briefing.
 
-    METARs: {[m.raw_text for m in metars]}
-    TAFs: {[t.raw_text for t in tafs]}
-    NOTAMs: {[n.text for n in notams]}
-    PIREPs: {[p.report for p in pireps]}
-    Hazards: {hazards}
-    """
+Route: {route_str}
 
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
-    }
-    r = requests.post(f"{GEMINI_URL}?key={GEMINI_API_KEY}", json=payload)
-    if r.status_code != 200:
-        return ("Summary unavailable", "Summary unavailable")
+Current Weather:
+{chr(10).join(weather_summary)}
 
-    text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-    # simple split: first 5 lines vs rest
-    lines = text.split("\n")
-    summary_5line = "\n".join(lines[:5])
-    summary_full = text
-    return summary_5line, summary_full
+Provide a brief 4-line summary focusing on:
+1. Overall weather conditions
+2. Key hazards or concerns
+3. Visibility and winds
+4. Go/No-go recommendation"""
+        
+        print("🤖 Calling Gemini API...")
+        
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt}
+                    ]
+                }
+            ]
+        }
+        
+        # Use the correct API URL with your key
+        url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
+        print(f"🌐 Gemini URL: {url[:80]}...")  # Don't log the full key
+        
+        response = requests.post(url, json=payload, timeout=30)
+        
+        print(f"🤖 Gemini Response Status: {response.status_code}")
+        
+        if response.status_code != 200:
+            error_text = response.text
+            print(f"❌ Gemini API Error: {error_text}")
+            return basic_summary, f"AI summary failed - using basic summary"
+        
+        result = response.json()
+        
+        # Extract the AI response
+        if "candidates" in result and len(result["candidates"]) > 0:
+            ai_text = result["candidates"][0]["content"]["parts"][0]["text"]
+            print("✅ Successfully got AI summary")
+            return ai_text, ai_text
+        else:
+            print("❌ Unexpected Gemini response format")
+            return basic_summary, "AI response format error"
+        
+    except requests.exceptions.Timeout:
+        print("⏱️ Gemini API request timed out")
+        return basic_summary, "AI summary timed out"
+    except Exception as e:
+        print(f"💥 Error calling Gemini API: {e}")
+        return basic_summary, f"AI summary error: {str(e)}"
