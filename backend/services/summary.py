@@ -75,7 +75,7 @@ def summarize_weather(
         # Use the correct model name from the documentation
         model = "gemini-2.5-flash"
         
-        prompt = f"""You are a professional flight dispatcher. Create a concise pilot weather briefing.
+        prompt = f"""You are a professional flight dispatcher. Create a concise pilot weather briefing.WRITE AIRPORT NAME IN BRACKET AFTER THE CODE
 
 Route: {route_str}
 
@@ -85,8 +85,8 @@ Current Weather Reports:
 Active NOTAMs: {len(notams)}
 Pilot Reports: {len(pireps)}
 
-Provide a brief 4-line pilot briefing focusing on:
-Start directly with the answer, no filler lines
+Provide a brief 4-line pilot briefing focusing on: 
+Start directly with the answer, no filler lines MAKE IT ATLEAST 5 LINES
 1. Brief summary of weather condition from first airport in simple english terms (winds 280 at 10 knots, 1000ft clouds,10sm visibility)
 2. Brief summary of weather condition from second airport in simple english terms
 3. Brief of NOTAMs or SIGMETs if any
@@ -148,3 +148,4 @@ Start directly with the answer, no filler lines
     except Exception as e:
         print(f"💥 Error calling Gemini API: {e}")
         return basic_summary, f"AI summary error: {str(e)}"
+    
