@@ -116,7 +116,7 @@ const AuthForm = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="pilot@example.com"
+                  placeholder=""
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -134,7 +134,7 @@ const AuthForm = () => {
                     Sending...
                   </div>
                 ) : (
-                  "Send Magic Link"
+                  "Get Link"
                 )}
               </Button>
             </form>
