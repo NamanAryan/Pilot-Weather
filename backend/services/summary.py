@@ -92,7 +92,7 @@ Start directly with the answer, no filler lines MAKE IT ATLEAST 5 LINES
 3. Brief of NOTAMs or SIGMETs if any
 4. Any reported PIREPs
 5. Any hazards along the route
-Do include important details like wind direction and speed, visibility, cloud cover, and significant weather phenomena. Mention Remarks if any. (Dont miss any METAR info)"""
+Do include important details like wind direction and speed, visibility, cloud cover, and significant weather phenomena. Mention Remarks if any. (Dont miss any METAR info)."""
         
         # Use the correct API format from documentation
         payload = {

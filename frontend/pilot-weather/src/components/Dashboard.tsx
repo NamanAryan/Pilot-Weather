@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -56,6 +57,7 @@ const Dashboard = () => {
   const [pastFlights, setPastFlights] = useState<FlightRow[]>([]);
   const [activePanel, setActivePanel] = useState<"add" | "search" | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getInitialSession = async () => {
@@ -189,6 +191,10 @@ const Dashboard = () => {
       toast({ title: "Missing fields", description: "Departure and arrival are required" });
       return;
     }
+    if (!plannedAt) {
+      toast({ title: "Missing time", description: "Planned date and time is required" });
+      return;
+    }
     try {
       setSavingFlight(true);
       const payload = {
@@ -196,7 +202,7 @@ const Dashboard = () => {
         departure: dep,
         arrival: arr,
         intermediates: mids.length ? mids : null,
-        planned_at: plannedAt ? new Date(plannedAt).toISOString() : null,
+        planned_at: new Date(plannedAt).toISOString(),
       };
       const { error } = await supabase.from("flights").insert(payload);
       if (error) throw error;
@@ -213,10 +219,19 @@ const Dashboard = () => {
     }
   };
 
+  const deleteFlight = async (id: string) => {
+    try {
+      const { error } = await supabase.from("flights").delete().eq("id", id);
+      if (error) throw error;
+      if (user?.id) reloadFlights(user.id);
+      toast({ title: "Flight deleted" });
+    } catch (e) {
+      toast({ title: "Delete failed", description: e instanceof Error ? e.message : "" });
+    }
+  };
+
   const briefFromFlight = async (f: FlightRow) => {
-    const airports = [f.departure, ...(f.intermediates || []), f.arrival].filter(Boolean);
-    setRoute(airports.join(" "));
-    await getBriefing();
+    navigate(`/flight/${f.id}`);
   };
 
   if (loading) {
@@ -317,8 +332,8 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="planned" className="text-sm font-medium text-gray-700">Planned Time (optional)</Label>
-                <Input id="planned" type="datetime-local" value={plannedAt} onChange={(e) => setPlannedAt(e.target.value)} className="h-11 border-gray-200" />
+                <Label htmlFor="planned" className="text-sm font-medium text-gray-700">Planned Time</Label>
+                <Input id="planned" type="datetime-local" required value={plannedAt} onChange={(e) => setPlannedAt(e.target.value)} className="h-11 border-gray-200" />
               </div>
               <div className="flex justify-end">
                 <Button onClick={saveFlight} disabled={savingFlight} className="h-11 bg-blue-600 hover:bg-blue-700 text-white">
@@ -409,10 +424,19 @@ const Dashboard = () => {
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {pastFlights.map((f) => (
-                      <button key={f.id} onClick={() => briefFromFlight(f)} className="text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100">
-                        <div className="font-semibold text-gray-800">{f.departure} → {[...(f.intermediates || [])].join(" ")} {f.arrival}</div>
-                        {f.planned_at && <div className="text-xs text-gray-600 mt-1">{new Date(f.planned_at).toLocaleString()}</div>}
-                      </button>
+                      <div key={f.id} className="group relative">
+                        <button onClick={() => briefFromFlight(f)} className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100">
+                          <div className="font-semibold text-gray-800">{f.departure} → {[...(f.intermediates || [])].join(" ")} {f.arrival}</div>
+                          {f.planned_at && <div className="text-xs text-gray-600 mt-1">{new Date(f.planned_at).toLocaleString()}</div>}
+                        </button>
+                        <button
+                          onClick={() => deleteFlight(f.id)}
+                          className="absolute top-2 right-2 hidden group-hover:block text-xs px-2 py-1 bg-red-600 text-white rounded"
+                          title="Delete"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}

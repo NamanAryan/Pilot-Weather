@@ -14,6 +14,7 @@ from models.response import RouteAnalysisResponse
 from services.weather import fetch_metar, fetch_taf, fetch_notams, fetch_pireps
 from services.route import fetch_route, map_hazards
 from services.airports import get_alternate_airports
+from services.airports import get_airport_info
 from services.summary import summarize_weather
 
 app = FastAPI(title="Aviation Pre-Flight Assistant")
@@ -33,6 +34,24 @@ def health():
         "avwx_configured": bool(os.getenv("AVWX_TOKEN")),
         "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
     }
+
+
+@app.get("/airport-info")
+def airport_info(codes: str | None = None):
+    """Return basic info (icao, name) for a comma/space-separated list of ICAO codes."""
+    if not codes:
+        return []
+    results = []
+    for raw in codes.replace(",", " ").split():
+        try:
+            info = get_airport_info(raw)
+            if info:
+                results.append({"icao": info.get("icao"), "name": info.get("name")})
+            else:
+                results.append({"icao": raw.upper(), "name": None})
+        except Exception:
+            results.append({"icao": raw.upper(), "name": None})
+    return results
 
 @app.post("/analyze-route", response_model=RouteAnalysisResponse)
 def analyze_route(req: RouteRequest):
