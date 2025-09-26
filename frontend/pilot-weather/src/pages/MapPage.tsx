@@ -254,27 +254,30 @@ export default function MapPage() {
   const example = "VABB VAAH VAID VAPO";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-6xl mx-auto p-6 space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <Link to="/" className="text-blue-600 underline">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-700 transition-colors bg-white px-4 py-2 rounded-xl shadow-sm hover-lift btn-press"
+          >
             ← Back
           </Link>
-          <div className="text-sm text-gray-600">Map View</div>
+          <div className="text-sm text-slate-600 bg-white px-4 py-2 rounded-xl shadow-sm">Map View</div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur border-0 shadow-lg rounded-xl p-4">
-          <div className="text-sm text-gray-700 mb-2">
-            Provide your route in the URL as <code>?route=KJFK EGLL LFPG</code>.
+        <div className="bg-white rounded-3xl border-0 shadow-xl p-6 card-hover">
+          <div className="text-sm text-slate-600 mb-4">
+            Provide your route in the URL as <code className="bg-slate-100 px-2 py-1 rounded-lg font-mono">?route=KJFK EGLL LFPG</code>.
             Example:{" "}
             <Link
-              className="text-blue-600 underline"
+              className="text-gray-600 hover:text-gray-700 transition-colors font-medium link-hover"
               to={`/map?route=${encodeURIComponent(example)}`}
             >
               {example}
             </Link>
           </div>
-          <div id="airport-map" style={{ height: 600, borderRadius: 12 }} />
+          <div id="airport-map" style={{ height: 600, borderRadius: 16 }} />
         </div>
       </div>
     </div>

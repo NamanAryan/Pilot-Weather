@@ -77,25 +77,25 @@ const AuthForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4">
-            <Plane className="w-6 h-6 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-800 to-black rounded-3xl mb-6 shadow-xl">
+            <Plane className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-slate-800 mb-3">
             Pilot Briefing
           </h1>
-          <p className="text-gray-600">Aviation weather at your fingertips</p>
+          <p className="text-slate-600 text-lg">Aviation weather at your fingertips</p>
         </div>
 
-        <Card className="bg-white/80 backdrop-blur border-0 shadow-xl">
-          <CardHeader className="text-center space-y-2 pb-6">
-            <CardTitle className="text-xl font-semibold text-gray-800">
+        <Card className="bg-white rounded-3xl border-0 shadow-2xl">
+          <CardHeader className="text-center space-y-3 pb-8">
+            <CardTitle className="text-2xl font-bold text-slate-800">
               Welcome Back
             </CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardDescription className="text-slate-600 text-lg">
               Sign in to access your flight briefings
             </CardDescription>
           </CardHeader>
@@ -117,12 +117,12 @@ const AuthForm = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-11 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                  className="h-11 border-gray-200 focus:border-gray-800 focus:ring-2 focus:ring-gray-200 transition-all input-focus"
                 />
               </div>
               <Button 
                 type="submit" 
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200" 
+                className="w-full h-11 bg-gray-800 hover:bg-black text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 hover-lift btn-press" 
                 disabled={isLoading}
               >
                 {isLoading ? (

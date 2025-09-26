@@ -61,6 +61,54 @@ def airport_info(codes: str | None = None):
             results.append({"icao": raw.upper(), "name": None})
     return results
 
+@app.get("/airports/search")
+def search_airports(q: str = ""):
+    """Search airports by ICAO code or name for autocomplete.
+    
+    Returns: List of {icao, name, city, country} objects
+    """
+    if not q or len(q) < 2:
+        return []
+    
+    import csv
+    import os
+    
+    results = []
+    airports_file = os.path.join(os.path.dirname(__file__), "data", "airports.csv")
+    
+    try:
+        with open(airports_file, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                icao = row.get('icao_code', '').strip()
+                name = row.get('name', '').strip()
+                city = row.get('municipality', '').strip()
+                country = row.get('iso_country', '').strip()
+                
+                # Only include airports with ICAO codes
+                if not icao:
+                    continue
+                
+                # Search in ICAO code, name, or city
+                search_text = f"{icao} {name} {city}".lower()
+                if q.lower() in search_text:
+                    results.append({
+                        "icao": icao,
+                        "name": name,
+                        "city": city,
+                        "country": country
+                    })
+                    
+                    # Limit results to 20 for performance
+                    if len(results) >= 20:
+                        break
+                        
+    except Exception as e:
+        print(f"Error reading airports file: {e}")
+        return []
+    
+    return results
+
 @app.post("/analyze-route", response_model=RouteAnalysisResponse)
 def analyze_route(req: RouteRequest):
     print(f"🛫 Processing route request: {req.airports}")

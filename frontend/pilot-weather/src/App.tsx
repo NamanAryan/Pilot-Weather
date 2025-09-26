@@ -32,8 +32,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-lg text-blue-600 font-bold">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-lg text-gray-600 font-bold">Loading...</div>
       </div>
     );
   }

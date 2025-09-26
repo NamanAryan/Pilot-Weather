@@ -652,8 +652,8 @@ function DetailedReport({
     if (lowerTitle.includes("hazard") || lowerTitle.includes("risk"))
       return "text-red-600";
     if (lowerTitle.includes("operational") || lowerTitle.includes("notes"))
-      return "text-blue-600";
-    return "text-blue-600";
+      return "text-gray-600";
+    return "text-gray-600";
   };
 
   // Function to highlight critical words in text
@@ -882,13 +882,13 @@ function DetailedReport({
   const getRiskBadgeStyling = (riskLevel: string) => {
     switch (riskLevel) {
       case "HIGH":
-        return "bg-red-100 text-red-800 border border-red-300";
+        return "bg-red-50 text-red-700 border border-red-200 shadow-sm";
       case "MODERATE":
-        return "bg-yellow-100 text-yellow-800 border border-yellow-300";
+        return "bg-yellow-50 text-yellow-700 border border-yellow-200 shadow-sm";
       case "LOW":
-        return "bg-green-100 text-green-800 border border-green-300";
+        return "bg-green-50 text-green-700 border border-green-200 shadow-sm";
       default:
-        return "bg-gray-100 text-gray-800 border border-gray-300";
+        return "bg-gray-800 text-white border border-gray-700 shadow-sm";
     }
   };
 
@@ -922,8 +922,8 @@ function DetailedReport({
                       <div
                         className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold ${
                           sectionRiskLevel === "HIGH"
-                            ? "bg-red-100 text-red-800 border border-red-300"
-                            : "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                            ? "bg-red-50 text-red-700 border border-red-200 shadow-sm"
+                            : "bg-yellow-50 text-yellow-700 border border-yellow-200 shadow-sm"
                         }`}
                       >
                         {sectionRiskLevel === "HIGH"
@@ -934,7 +934,7 @@ function DetailedReport({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-blue-50 rounded-lg p-4 text-gray-800 leading-relaxed">
+                <div className="bg-gray-50 rounded-lg p-4 text-gray-800 leading-relaxed">
                   <div className="space-y-2">
                     {formatSectionContent(section.content)}
                   </div>
@@ -953,12 +953,12 @@ function DetailedReport({
       <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Briefcase className="w-5 h-5 text-blue-600" />
+            <Briefcase className="w-5 h-5 text-gray-600" />
             Detailed Report
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-yellow-50 rounded-lg p-4 text-gray-800 leading-relaxed">
+          <div className="bg-yellow-50 rounded-lg p-4 text-yellow-800 leading-relaxed border border-yellow-200 shadow-sm">
             <div className="text-sm">
               <p className="mb-2">
                 ⚠️ AI-generated detailed report not available.
@@ -1125,25 +1125,27 @@ export default function FlightDetail() {
   }, [route]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="flex items-center justify-between mb-8">
           <Button
             variant="outline"
             onClick={() => navigate(-1)}
-            className="gap-2"
+            className="gap-2 px-6 py-2 rounded-xl border-slate-200 hover:bg-gray-800 hover:text-white hover:border-gray-800 hover-lift btn-press"
           >
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-slate-600 bg-white px-4 py-2 rounded-xl shadow-sm">
             {flight?.planned_at && new Date(flight.planned_at).toLocaleString()}
           </div>
         </div>
 
-        <Card className="bg-white/80 backdrop-blur border-0 shadow-lg mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Plane className="w-5 h-5 text-blue-600" />
+        <Card className="bg-white rounded-3xl border-0 shadow-xl mb-8 card-hover">
+          <CardHeader className="pb-6">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center">
+                <Plane className="w-5 h-5 text-gray-600" />
+              </div>
               {loadingFlight
                 ? "Loading flight..."
                 : `${flight?.departure} → ${(flight?.intermediates || []).join(
@@ -1154,7 +1156,7 @@ export default function FlightDetail() {
           <CardContent>
             {/* Names Row */}
             {!loadingFlight && (
-              <div className="text-sm text-gray-700 mb-3">
+              <div className="text-sm text-slate-600 mb-4 bg-slate-50 rounded-xl p-3">
                 {[
                   flight?.departure,
                   ...(flight?.intermediates || []),
@@ -1195,8 +1197,36 @@ export default function FlightDetail() {
         </Card>
 
         {briefingLoading && (
-          <div className="mb-6 text-gray-600">
-            Fetching latest weather and recalculating summary...
+          <div className="mb-6 flex flex-col items-center justify-center">
+            <div className="mb-4">
+              <div className="gif-loading-container">
+                <img
+                  src="https://s5.ezgif.com/tmp/ezgif-5c95bcdba8a780.gif"
+                  alt="Loading weather data..."
+                  className="loading-gif"
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    boxShadow: 'none',
+                    filter: 'none'
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (nextElement) {
+                      nextElement.style.display = 'flex';
+                    }
+                  }}
+                />
+                <div className="w-48 h-48 flex items-center justify-center" style={{display: 'none'}}>
+                  <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200 border-t-gray-600"></div>
+                </div>
+              </div>
+            </div>
+            <div className="text-gray-600 text-center">
+              Fetching latest weather and recalculating summary...
+            </div>
           </div>
         )}
         {!briefingLoading && !briefing && (
@@ -1211,9 +1241,9 @@ export default function FlightDetail() {
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setActiveTab("brief")}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors hover-lift btn-press ${
                   activeTab === "brief"
-                    ? "bg-white text-blue-600 shadow-sm"
+                    ? "bg-gray-800 text-white shadow-sm"
                     : "text-gray-600 hover:text-gray-800"
                 }`}
               >
@@ -1222,9 +1252,9 @@ export default function FlightDetail() {
               </button>
               <button
                 onClick={() => setActiveTab("detailed")}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors hover-lift btn-press ${
                   activeTab === "detailed"
-                    ? "bg-white text-blue-600 shadow-sm"
+                    ? "bg-gray-800 text-white shadow-sm"
                     : "text-gray-600 hover:text-gray-800"
                 }`}
               >
@@ -1235,12 +1265,12 @@ export default function FlightDetail() {
 
             {/* Tab Content */}
             {activeTab === "brief" && (
-              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
+              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg card-hover">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg">Flight Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-blue-50 rounded-lg p-4 text-gray-800 leading-relaxed">
+                  <div className="bg-gray-50 rounded-lg p-4 text-gray-800 leading-relaxed">
                     {(() => {
                       const lines = (briefing.summary_5line || "")
                         .split(/\r?\n/)
@@ -1275,7 +1305,7 @@ export default function FlightDetail() {
             )}
 
             {/* Inline Route Map under summary */}
-            <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
+            <Card className="bg-white/80 backdrop-blur border-0 shadow-lg card-hover">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Route Map</CardTitle>
               </CardHeader>
@@ -1294,10 +1324,10 @@ export default function FlightDetail() {
             </Card>
 
             {briefing.metars && briefing.metars.length > 0 && (
-              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
+              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg card-hover">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Plane className="w-5 h-5 text-blue-600" /> Current Weather
+                    <Plane className="w-5 h-5 text-gray-600" /> Current Weather
                     (METARs)
                   </CardTitle>
                 </CardHeader>
@@ -1305,7 +1335,7 @@ export default function FlightDetail() {
                   <div className="grid gap-3">
                     {briefing.metars.map((m, i) => (
                       <div key={i} className="bg-gray-50 rounded-lg p-4">
-                        <div className="font-semibold text-blue-600 mb-1">
+                        <div className="font-semibold text-gray-600 mb-1">
                           {m.station}
                         </div>
                         <div className="text-sm text-gray-700 font-mono">

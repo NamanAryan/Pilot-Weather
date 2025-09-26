@@ -7,6 +7,7 @@ import { Label } from "./ui/label";
 import DateTimePicker from "./ui/DateTimePicker";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
+import { AirportAutocomplete } from "./AirportAutocomplete";
 import {
   Plane,
   Route,
@@ -76,7 +77,54 @@ const Dashboard = () => {
   const [pastFlights, setPastFlights] = useState<FlightRow[]>([]);
   const [activePanel, setActivePanel] = useState<"add" | "search" | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [planeAnimating, setPlaneAnimating] = useState(false);
+  const [deletingFlightId, setDeletingFlightId] = useState<string | null>(null);
+  
+  // Validation state
+  const [departureValid, setDepartureValid] = useState(false);
+  const [arrivalValid, setArrivalValid] = useState(false);
+  const [intermediatesValid, setIntermediatesValid] = useState<boolean[]>([]);
+  const [searchDepartureValid, setSearchDepartureValid] = useState(false);
+  const [searchArrivalValid, setSearchArrivalValid] = useState(false);
   const navigate = useNavigate();
+
+  // Function to get user's first name from Google account
+  const getUserFirstName = () => {
+    if (!user) return "Pilot";
+    
+    // Debug: Log user object to see available data
+    console.log("User object:", user);
+    console.log("User metadata:", user.user_metadata);
+    console.log("Raw user metadata:", user.raw_user_meta_data);
+    
+    // Try to get first name from user_metadata
+    if (user.user_metadata?.full_name) {
+      const fullName = user.user_metadata.full_name;
+      const firstName = fullName.split(' ')[0];
+      console.log("Found first name from user_metadata:", firstName);
+      return firstName || "Pilot";
+    }
+    
+    // Try to get first name from raw_user_meta_data
+    if (user.raw_user_meta_data?.full_name) {
+      const fullName = user.raw_user_meta_data.full_name;
+      const firstName = fullName.split(' ')[0];
+      console.log("Found first name from raw_user_meta_data:", firstName);
+      return firstName || "Pilot";
+    }
+    
+    // Try to get first name from email (before @)
+    if (user.email) {
+      const emailName = user.email.split('@')[0];
+      // Convert to title case
+      const firstName = emailName.charAt(0).toUpperCase() + emailName.slice(1).toLowerCase();
+      console.log("Using email name as first name:", firstName);
+      return firstName;
+    }
+    
+    console.log("No name found, using default: Pilot");
+    return "Pilot";
+  };
 
   useEffect(() => {
     const getInitialSession = async () => {
@@ -159,20 +207,39 @@ const Dashboard = () => {
       return;
     }
 
-    // Create route string from individual inputs
-    const routeParts = [dep, ...mids, arr].filter(Boolean);
-    const routeString = routeParts.join(" ");
+    if (!searchDepartureValid || !searchArrivalValid) {
+      toast({
+        title: "Invalid airports",
+        description: "Please select valid airports from the dropdown",
+      });
+      return;
+    }
 
-    // Navigate to detail page using route string
-    briefFromFlight({
-      id: "route",
-      user_id: user?.id,
-      departure: dep,
-      arrival: arr,
-      intermediates: mids,
-      planned_at: null,
-      created_at: new Date().toISOString(),
-    } as any);
+    // Start plane animation
+    setPlaneAnimating(true);
+
+    // Wait for animation to complete (2000ms) + extra delay for visibility
+    setTimeout(() => {
+      // Create route string from individual inputs
+      const routeParts = [dep, ...mids, arr].filter(Boolean);
+      const routeString = routeParts.join(" ");
+
+      // Navigate to detail page using route string
+      briefFromFlight({
+        id: "route",
+        user_id: user?.id,
+        departure: dep,
+        arrival: arr,
+        intermediates: mids,
+        planned_at: null,
+        created_at: new Date().toISOString(),
+      } as any);
+
+      // Reset animation state after navigation
+      setTimeout(() => {
+        setPlaneAnimating(false);
+      }, 100);
+    }, 2200);
   };
 
   const addIntermediate = () => {
@@ -224,6 +291,14 @@ const Dashboard = () => {
       });
       return;
     }
+
+    if (!departureValid || !arrivalValid) {
+      toast({
+        title: "Invalid airports",
+        description: "Please select valid airports from the dropdown",
+      });
+      return;
+    }
     if (!plannedAt) {
       toast({
         title: "Missing time",
@@ -263,17 +338,24 @@ const Dashboard = () => {
   };
 
   const deleteFlight = async (id: string) => {
-    try {
-      const { error } = await supabase.from("flights").delete().eq("id", id);
-      if (error) throw error;
-      if (user?.id) reloadFlights(user.id);
-      toast({ title: "Flight deleted", variant: "error" });
-    } catch (e) {
-      toast({
-        title: "Delete failed",
-        description: e instanceof Error ? e.message : "",
-      });
-    }
+    setDeletingFlightId(id);
+    
+    // Add a small delay for the animation
+    setTimeout(async () => {
+      try {
+        const { error } = await supabase.from("flights").delete().eq("id", id);
+        if (error) throw error;
+        if (user?.id) reloadFlights(user.id);
+        toast({ title: "Flight deleted", variant: "error" });
+      } catch (e) {
+        toast({
+          title: "Delete failed",
+          description: e instanceof Error ? e.message : "",
+        });
+      } finally {
+        setDeletingFlightId(null);
+      }
+    }, 500);
   };
 
   const briefFromFlight = async (f: FlightRow) => {
@@ -289,9 +371,9 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="flex items-center gap-3 text-gray-600">
-          <div className="w-6 h-6 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-gray-600/30 border-t-gray-600 rounded-full animate-spin" />
           Loading dashboard...
         </div>
       </div>
@@ -300,7 +382,7 @@ const Dashboard = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-gray-600">
           Please sign in to access your dashboard
         </div>
@@ -309,97 +391,109 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-6xl mx-auto p-6">
-        {/* Top Greeting & Sign Out */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Plane className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-gray-800 to-black rounded-2xl flex items-center justify-center shadow-lg">
+              <Plane className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">
-                Welcome back, Pilot
+              <h1 className="text-3xl font-bold text-slate-800">
+                Welcome back, {getUserFirstName()}
               </h1>
-              <p className="text-sm text-gray-600">
+              <p className="text-slate-600 text-lg">
                 Aviation Weather Dashboard
               </p>
             </div>
           </div>
-          <Button
-            onClick={handleSignOut}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              className="flex items-center gap-2 px-6 py-2 rounded-xl border-slate-200 hover:bg-gray-800 hover:text-white hover:border-gray-800 hover-lift btn-press"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-6">
-          {/* Toggle Buttons */}
+          {/* Action Buttons */}
           <div className="grid md:grid-cols-2 gap-6">
             <button
               onClick={() => setActivePanel("add")}
-              className={`p-10 rounded-2xl border text-left transition-all ${
+              className={`p-8 rounded-3xl border-2 text-left transition-all duration-300 hover-lift btn-press zoom-in ${
                 activePanel === "add"
-                  ? "bg-blue-600 text-white border-blue-700 shadow-lg"
-                  : "bg-white border-gray-200 hover:bg-gray-50"
+                  ? "bg-gradient-to-br from-gray-800 to-black text-white border-gray-800 shadow-xl"
+                  : "bg-white border-slate-200 hover:border-gray-300 hover:shadow-lg"
               }`}
             >
-              <div className="flex items-center gap-3">
-                <Equal
-                  className={`w-8 h-8 ${
-                    activePanel === "add" ? "text-white" : "text-blue-600"
-                  }`}
-                />
-                <div className="text-2xl font-semibold">Add Flight</div>
-              </div>
-              <div
-                className={`mt-3 text-base ${
-                  activePanel === "add" ? "text-blue-100" : "text-gray-600"
-                }`}
-              >
-                Create and save a personalized flight
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                  activePanel === "add" ? "bg-white/20" : "bg-gray-50"
+                }`}>
+                  <Equal
+                    className={`w-6 h-6 ${
+                      activePanel === "add" ? "text-white" : "text-gray-600"
+                    }`}
+                  />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">Add Flight</div>
+                  <div className={`text-base mt-2 ${
+                    activePanel === "add" ? "text-gray-100" : "text-slate-600"
+                  }`}>
+                    Create and save a personalized flight
+                  </div>
+                </div>
               </div>
             </button>
             <button
               onClick={() => setActivePanel("search")}
-              className={`p-10 rounded-2xl border text-left transition-all ${
+              className={`p-8 rounded-3xl border-2 text-left transition-all duration-300 hover-lift btn-press zoom-in ${
                 activePanel === "search"
-                  ? "bg-blue-600 text-white border-blue-700 shadow-lg"
-                  : "bg-white border-gray-200 hover:bg-gray-50"
+                  ? "bg-gradient-to-br from-gray-800 to-black text-white border-gray-800 shadow-xl"
+                  : "bg-white border-slate-200 hover:border-gray-300 hover:shadow-lg"
               }`}
             >
-              <div className="flex items-center gap-3">
-                <Search
-                  className={`w-8 h-8 ${
-                    activePanel === "search" ? "text-white" : "text-blue-600"
-                  }`}
-                />
-                <div className="text-2xl font-semibold">Search Flight</div>
-              </div>
-              <div
-                className={`mt-3 text-base ${
-                  activePanel === "search" ? "text-blue-100" : "text-gray-600"
-                }`}
-              >
-                Run a one-off route briefing
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                  activePanel === "search" ? "bg-white/20" : "bg-gray-50"
+                }`}>
+                  <Search
+                    className={`w-6 h-6 ${
+                      activePanel === "search" ? "text-white" : "text-gray-600"
+                    }`}
+                  />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">Search Flight</div>
+                  <div className={`text-base mt-2 ${
+                    activePanel === "search" ? "text-gray-100" : "text-slate-600"
+                  }`}>
+                    Run a one-off route briefing
+                  </div>
+                </div>
               </div>
             </button>
           </div>
 
           {/* Add Flight Panel */}
           <Card
-            className={`bg-white/80 backdrop-blur border-0 shadow-lg transition-all ${
+            className={`bg-white rounded-3xl border-0 shadow-xl transition-all duration-500 ${
               activePanel === "add"
                 ? "opacity-100 scale-100"
                 : "opacity-0 scale-95 h-0 overflow-hidden"
             }`}
           >
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Route className="w-5 h-5 text-blue-600" />
+            <CardHeader className="pb-6">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center">
+                  <Route className="w-5 h-5 text-gray-600" />
+                </div>
                 Add Flight
               </CardTitle>
             </CardHeader>
@@ -412,12 +506,12 @@ const Dashboard = () => {
                   >
                     Departure
                   </Label>
-                  <Input
-                    id="dep"
+                  <AirportAutocomplete
                     value={departure}
-                    onChange={(e) => setDeparture(e.target.value.toUpperCase())}
+                    onChange={setDeparture}
                     placeholder="e.g., KJFK"
-                    className="h-11 border-gray-200"
+                    className="h-11"
+                    onValidationChange={setDepartureValid}
                   />
                 </div>
                 <div className="space-y-2">
@@ -427,12 +521,12 @@ const Dashboard = () => {
                   >
                     Arrival
                   </Label>
-                  <Input
-                    id="arr"
+                  <AirportAutocomplete
                     value={arrival}
-                    onChange={(e) => setArrival(e.target.value.toUpperCase())}
+                    onChange={setArrival}
                     placeholder="e.g., KLAX"
-                    className="h-11 border-gray-200"
+                    className="h-11"
+                    onValidationChange={setArrivalValid}
                   />
                 </div>
               </div>
@@ -483,7 +577,7 @@ const Dashboard = () => {
                 <Button
                   onClick={saveFlight}
                   disabled={savingFlight}
-                  className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="h-11 bg-gray-800 hover:bg-black text-white hover-lift btn-press"
                 >
                   {savingFlight ? "Saving..." : "Add Flight"}
                 </Button>
@@ -493,15 +587,17 @@ const Dashboard = () => {
 
           {/* Search Flight Panel */}
           <Card
-            className={`bg-white/80 backdrop-blur border-0 shadow-lg transition-all ${
+            className={`bg-white rounded-3xl border-0 shadow-xl transition-all duration-500 ${
               activePanel === "search"
                 ? "opacity-100 scale-100"
                 : "opacity-0 scale-95 h-0 overflow-hidden"
             }`}
           >
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Search className="w-5 h-5 text-blue-600" />
+            <CardHeader className="pb-6">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center">
+                  <Search className="w-5 h-5 text-gray-600" />
+                </div>
                 Search Flight
               </CardTitle>
             </CardHeader>
@@ -514,14 +610,12 @@ const Dashboard = () => {
                   >
                     Departure
                   </Label>
-                  <Input
-                    id="search-dep"
+                  <AirportAutocomplete
                     value={searchDeparture}
-                    onChange={(e) =>
-                      setSearchDeparture(e.target.value.toUpperCase())
-                    }
+                    onChange={setSearchDeparture}
                     placeholder="e.g., KJFK"
-                    className="h-11 border-gray-200"
+                    className="h-11"
+                    onValidationChange={setSearchDepartureValid}
                   />
                 </div>
                 <div className="space-y-2">
@@ -531,14 +625,12 @@ const Dashboard = () => {
                   >
                     Arrival
                   </Label>
-                  <Input
-                    id="search-arr"
+                  <AirportAutocomplete
                     value={searchArrival}
-                    onChange={(e) =>
-                      setSearchArrival(e.target.value.toUpperCase())
-                    }
+                    onChange={setSearchArrival}
                     placeholder="e.g., KLAX"
-                    className="h-11 border-gray-200"
+                    className="h-11"
+                    onValidationChange={setSearchArrivalValid}
                   />
                 </div>
               </div>
@@ -581,13 +673,19 @@ const Dashboard = () => {
               </div>
               <Button
                 onClick={getBriefing}
-                disabled={briefingLoading}
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                disabled={briefingLoading || planeAnimating}
+                className={`w-full h-11 bg-gray-800 hover:bg-black text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 plane-animation hover-lift btn-press ${planeAnimating ? 'animating' : ''}`}
               >
                 {briefingLoading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Analyzing Route...
+                  </div>
+                ) : planeAnimating ? (
+                  <div className="flex items-center gap-2">
+                    {/* Text will be hidden by CSS during animation */}
+                    <Send className="w-4 h-4" />
+                    Getting Briefing...
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -603,10 +701,10 @@ const Dashboard = () => {
           <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
             <button
               onClick={() => setHistoryOpen((v) => !v)}
-              className="w-full text-left px-6 pt-6 pb-4 flex items-center justify-between"
+              className="w-full text-left px-6 pt-6 pb-4 flex items-center justify-between hover-lift btn-press"
             >
               <div className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-                <History className="w-5 h-5 text-blue-600" />
+                <History className="w-5 h-5 text-gray-600" />
                 Flight History
               </div>
               <span className="text-sm text-gray-500">
@@ -631,24 +729,24 @@ const Dashboard = () => {
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {upcomingFlights.map((f) => (
-                      <div key={f.id} className="group relative">
+                      <div key={f.id} className={`group relative ${deletingFlightId === f.id ? 'delete-fade' : ''}`}>
                         <button
                           onClick={() => briefFromFlight(f)}
-                          className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100"
+                          className="w-full text-left p-3 bg-gradient-to-br from-gray-800 to-black text-white hover:from-black hover:to-gray-800 rounded-lg border border-gray-800 shadow-lg hover-lift btn-press zoom-in"
                         >
-                          <div className="font-semibold text-blue-800">
+                          <div className="font-semibold text-white">
                             {f.departure} →{" "}
                             {[...(f.intermediates || [])].join(" ")} {f.arrival}
                           </div>
                           {f.planned_at && (
-                            <div className="text-xs text-blue-700 mt-1">
+                            <div className="text-xs text-gray-200 mt-1">
                               {new Date(f.planned_at).toLocaleString()}
                             </div>
                           )}
                         </button>
                         <button
                           onClick={() => deleteFlight(f.id)}
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600"
+                          className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 hover-scale btn-press ${deletingFlightId === f.id ? 'delete-animation' : ''}`}
                           title="Delete"
                           aria-label="Delete upcoming flight"
                         >
@@ -670,10 +768,10 @@ const Dashboard = () => {
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {pastFlights.map((f) => (
-                      <div key={f.id} className="group relative">
+                      <div key={f.id} className={`group relative ${deletingFlightId === f.id ? 'delete-fade' : ''}`}>
                         <button
                           onClick={() => briefFromFlight(f)}
-                          className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100"
+                          className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100 hover-lift btn-press zoom-in"
                         >
                           <div className="font-semibold text-gray-800">
                             {f.departure} →{" "}
@@ -687,7 +785,7 @@ const Dashboard = () => {
                         </button>
                         <button
                           onClick={() => deleteFlight(f.id)}
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600"
+                          className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600 hover-scale btn-press ${deletingFlightId === f.id ? 'delete-animation' : ''}`}
                           title="Delete"
                           aria-label="Delete past flight"
                         >
@@ -705,13 +803,13 @@ const Dashboard = () => {
           {briefing && (
             <div className="grid gap-6">
               {/* Summary */}
-              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">Flight Summary</CardTitle>
+              <Card className="bg-white rounded-3xl border-0 shadow-xl">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl font-bold">Flight Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <p className="text-gray-800 whitespace-pre-line leading-relaxed">
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6">
+                    <p className="text-slate-800 whitespace-pre-line leading-relaxed text-lg">
                       {briefing.summary_5line}
                     </p>
                   </div>
@@ -720,21 +818,23 @@ const Dashboard = () => {
 
               {/* Weather Data */}
               {briefing.metars && briefing.metars.length > 0 && (
-                <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Plane className="w-5 h-5 text-blue-600" />
+                <Card className="bg-white rounded-3xl border-0 shadow-xl">
+                  <CardHeader className="pb-6">
+                    <CardTitle className="flex items-center gap-3 text-xl">
+                      <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center">
+                        <Plane className="w-5 h-5 text-gray-600" />
+                      </div>
                       Current Weather (METARs)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid gap-3">
+                    <div className="grid gap-4">
                       {briefing.metars.map((metar, idx) => (
-                        <div key={idx} className="bg-gray-50 rounded-lg p-4">
-                          <div className="font-semibold text-blue-600 mb-1">
+                        <div key={idx} className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-6">
+                          <div className="font-bold text-gray-600 mb-2 text-lg">
                             {metar.station}
                           </div>
-                          <div className="text-sm text-gray-700 font-mono">
+                          <div className="text-sm text-slate-700 font-mono bg-white rounded-xl p-3">
                             {metar.raw_text}
                           </div>
                         </div>
@@ -746,22 +846,24 @@ const Dashboard = () => {
 
               {/* Hazards */}
               {briefing.hazards && briefing.hazards.length > 0 && (
-                <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <AlertTriangle className="w-5 h-5 text-amber-600" />
+                <Card className="bg-white rounded-3xl border-0 shadow-xl">
+                  <CardHeader className="pb-6">
+                    <CardTitle className="flex items-center gap-3 text-xl">
+                      <div className="w-10 h-10 bg-red-50 rounded-2xl flex items-center justify-center border border-red-200 shadow-sm">
+                        <AlertTriangle className="w-5 h-5 text-red-700" />
+                      </div>
                       Weather Hazards
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {briefing.hazards.map((hazard, idx) => (
                         <div
                           key={idx}
-                          className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg"
+                          className="flex items-start gap-3 p-4 bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl border border-red-200 shadow-sm"
                         >
-                          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-amber-800">
+                          <AlertTriangle className="w-5 h-5 text-red-700 mt-0.5 flex-shrink-0" />
+                          <span className="text-red-700 font-medium">
                             {hazard}
                           </span>
                         </div>
