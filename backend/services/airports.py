@@ -202,3 +202,109 @@ def get_alternate_airports(dest_icao: str, max_results: int = 5, radius_nm: floa
 
     candidates.sort(key=lambda x: x[0])
     return [a for _, a in candidates[:max_results]]
+
+
+def get_alternate_airports_categorized(
+    dest_icao: str,
+    max_results: int = 5,
+    radius_nm: float = 200.0,
+    min_runway_m: Optional[int] = 2200,
+) -> Dict[str, List[Airport]]:
+    if not dest_icao:
+        return {"least_deviation": [], "best_fuel_efficiency": [], "safest": []}
+
+    dest_info = get_airport_info(dest_icao)
+    if not dest_info or dest_info.get("latitude_deg") is None or dest_info.get("longitude_deg") is None:
+        return {"least_deviation": [], "best_fuel_efficiency": [], "safest": []}
+
+    dest_lat = float(dest_info["latitude_deg"])  # type: ignore[arg-type]
+    dest_lon = float(dest_info["longitude_deg"])  # type: ignore[arg-type]
+
+    pool: List[Dict[str, object]] = []
+
+    for row in _load_airports():
+        code = _extract_icao(row)
+        if not code or code == dest_icao.upper():
+            continue
+
+        coords = _extract_coords(row)
+        if not coords:
+            continue
+
+        distance_nm = _haversine_nm(dest_lat, dest_lon, coords[0], coords[1])
+        if distance_nm > radius_nm:
+            continue
+
+        if not _is_suitable_alternate(row, min_runway_m):
+            continue
+
+        runway_m = _extract_runway_length_m(row)
+        type_str = (_extract_type(row) or "").lower()
+        type_rank = {"large_airport": 0, "medium_airport": 1, "small_airport": 2}.get(type_str, 3)
+
+        airport_obj = Airport(
+            icao=code,
+            name=_extract_name(row),
+            lat=coords[0],
+            lon=coords[1],
+            runway_length=int(runway_m) if runway_m is not None else None,
+            has_fuel=None,
+            has_customs=None,
+        )
+
+        pool.append({
+            "airport": airport_obj,
+            "distance_nm": distance_nm,
+            "runway_m": runway_m or 0,
+            "type_rank": type_rank,
+        })
+
+    least_deviation = [p["airport"] for p in sorted(pool, key=lambda p: p["distance_nm"])[:max_results]]  # type: ignore[index]
+    best_fuel_efficiency = [
+        p["airport"]
+        for p in sorted(pool, key=lambda p: (p["distance_nm"], -p["runway_m"]))[:max_results]  # type: ignore[index]
+    ]
+    safest = [
+        p["airport"]
+        for p in sorted(pool, key=lambda p: (-p["runway_m"], p["type_rank"], p["distance_nm"]))[:max_results]  # type: ignore[index]
+    ]
+
+    return {
+        "least_deviation": least_deviation,
+        "best_fuel_efficiency": best_fuel_efficiency,
+        "safest": safest,
+    }
+
+
+def get_top3_alternate_airports_by_category(
+    dest_icao: str,
+    radius_nm: float = 200.0,
+    min_runway_m: Optional[int] = 2200,
+) -> Dict[str, Optional[Airport]]:
+    lists = get_alternate_airports_categorized(
+        dest_icao=dest_icao,
+        max_results=10,
+        radius_nm=radius_nm,
+        min_runway_m=min_runway_m,
+    )
+
+    chosen: Dict[str, Optional[Airport]] = {
+        "safest": None,
+        "least_deviation": None,
+        "best_fuel_efficiency": None,
+    }
+
+    used: set[str] = set()
+
+    def pick_first_unique(items: List[Airport]) -> Optional[Airport]:
+        for a in items:
+            if a.icao not in used:
+                used.add(a.icao)
+                return a
+        return None
+
+    chosen["safest"] = pick_first_unique(lists.get("safest", []))
+    chosen["least_deviation"] = pick_first_unique(lists.get("least_deviation", []))
+    chosen["best_fuel_efficiency"] = pick_first_unique(lists.get("best_fuel_efficiency", []))
+
+    return chosen

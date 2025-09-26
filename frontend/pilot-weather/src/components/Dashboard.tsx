@@ -4,9 +4,10 @@ import { supabase } from "../supabaseClient";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import DateTimePicker from "./ui/DateTimePicker";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
-import { Plane, Route, AlertTriangle, MapPin, LogOut, Send, Plus, Clock, History, Search, Equal } from "lucide-react";
+import { Plane, Route, AlertTriangle, MapPin, LogOut, Send, Plus, Clock, History, Search, Equal, Trash2 } from "lucide-react";
 
 interface Briefing {
   summary_5line: string;
@@ -128,46 +129,11 @@ const Dashboard = () => {
       });
       return;
     }
-
-    try {
-      setBriefingLoading(true);
-
-      const airports = route.trim().split(/\s+/);
-
-      const response = await fetch("http://localhost:8000/analyze-route", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ airports }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || `HTTP ${response.status}`);
-      }
-
-      const briefingData = await response.json();
-      setBriefing(briefingData);
-
-      toast({
-        title: "Briefing Complete",
-        description: "Flight briefing retrieved successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Briefing Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to get briefing",
-      });
-    } finally {
-      setBriefingLoading(false);
-    }
+    // Navigate to detail page using route string
+    briefFromFlight({ id: "route", user_id: user?.id, departure: route.trim().split(/\s+/)[0], arrival: route.trim().split(/\s+/).slice(-1)[0], intermediates: route.trim().split(/\s+/).slice(1, -1), planned_at: null, created_at: new Date().toISOString() } as any);
   };
 
   const addIntermediate = () => {
-    if (intermediates.length >= 2) {
-      toast({ title: "Limit reached", description: "Maximum 2 intermediate airports" });
-      return;
-    }
     setIntermediates([...intermediates, ""]);
   };
 
@@ -206,7 +172,7 @@ const Dashboard = () => {
       };
       const { error } = await supabase.from("flights").insert(payload);
       if (error) throw error;
-      toast({ title: "Flight saved" });
+       toast({ title: "Flight added", description: `${dep} → ${arr}`, variant: 'success' });
       setDeparture("");
       setArrival("");
       setIntermediates([]);
@@ -221,17 +187,22 @@ const Dashboard = () => {
 
   const deleteFlight = async (id: string) => {
     try {
-      const { error } = await supabase.from("flights").delete().eq("id", id);
+       const { error } = await supabase.from("flights").delete().eq("id", id);
       if (error) throw error;
       if (user?.id) reloadFlights(user.id);
-      toast({ title: "Flight deleted" });
+       toast({ title: "Flight deleted", variant: 'error' });
     } catch (e) {
       toast({ title: "Delete failed", description: e instanceof Error ? e.message : "" });
     }
   };
 
   const briefFromFlight = async (f: FlightRow) => {
-    navigate(`/flight/${f.id}`);
+    if (f.id === "route") {
+      const parts = [f.departure, ...(f.intermediates || []), f.arrival].filter(Boolean).join(" ");
+      navigate(`/brief?route=${encodeURIComponent(parts)}`);
+    } else {
+      navigate(`/flight/${f.id}`);
+    }
   };
 
   if (loading) {
@@ -319,7 +290,7 @@ const Dashboard = () => {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium text-gray-700">Intermediate Airports (max 2)</Label>
+                  <Label className="text-sm font-medium text-gray-700">Intermediate Airports</Label>
                   <Button type="button" variant="outline" onClick={addIntermediate} className="h-9 gap-2"><Plus className="w-4 h-4" /> Add</Button>
                 </div>
                 <div className="grid md:grid-cols-2 gap-3">
@@ -332,8 +303,8 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="planned" className="text-sm font-medium text-gray-700">Planned Time</Label>
-                <Input id="planned" type="datetime-local" required value={plannedAt} onChange={(e) => setPlannedAt(e.target.value)} className="h-11 border-gray-200" />
+                <Label className="text-sm font-medium text-gray-700">Planned Time</Label>
+                <DateTimePicker value={plannedAt} onChange={setPlannedAt} />
               </div>
               <div className="flex justify-end">
                 <Button onClick={saveFlight} disabled={savingFlight} className="h-11 bg-blue-600 hover:bg-blue-700 text-white">
@@ -407,10 +378,20 @@ const Dashboard = () => {
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {upcomingFlights.map((f) => (
-                      <button key={f.id} onClick={() => briefFromFlight(f)} className="text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100">
-                        <div className="font-semibold text-blue-800">{f.departure} → {[...(f.intermediates || [])].join(" ")} {f.arrival}</div>
-                        {f.planned_at && <div className="text-xs text-blue-700 mt-1">{new Date(f.planned_at).toLocaleString()}</div>}
-                      </button>
+                      <div key={f.id} className="group relative">
+                        <button onClick={() => briefFromFlight(f)} className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100">
+                          <div className="font-semibold text-blue-800">{f.departure} → {[...(f.intermediates || [])].join(" ")} {f.arrival}</div>
+                          {f.planned_at && <div className="text-xs text-blue-700 mt-1">{new Date(f.planned_at).toLocaleString()}</div>}
+                        </button>
+                        <button
+                          onClick={() => deleteFlight(f.id)}
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600"
+                          title="Delete"
+                          aria-label="Delete upcoming flight"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -431,10 +412,11 @@ const Dashboard = () => {
                         </button>
                         <button
                           onClick={() => deleteFlight(f.id)}
-                          className="absolute top-2 right-2 hidden group-hover:block text-xs px-2 py-1 bg-red-600 text-white rounded"
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600"
                           title="Delete"
+                          aria-label="Delete past flight"
                         >
-                          Delete
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     ))}

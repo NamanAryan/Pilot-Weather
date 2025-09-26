@@ -13,7 +13,7 @@ from models.route import RouteRequest
 from models.response import RouteAnalysisResponse
 from services.weather import fetch_metar, fetch_taf, fetch_notams, fetch_pireps
 from services.route import fetch_route, map_hazards
-from services.airports import get_alternate_airports
+from services.airports import get_alternate_airports, get_top3_alternate_airports_by_category
 from services.airports import get_airport_info
 from services.summary import summarize_weather
 
@@ -104,9 +104,11 @@ def analyze_route(req: RouteRequest):
         print("🛬 Getting alternates...")
         try:
             alternates = get_alternate_airports(req.airports[-1])
+            alternate_top3 = get_top3_alternate_airports_by_category(req.airports[-1])
         except Exception as e:
             print(f"❌ Alternates error: {e}")
             alternates = []
+            alternate_top3 = {"least_deviation": None, "best_fuel_efficiency": None, "safest": None}
         
         print("📝 Generating summary...")
         try:
@@ -125,6 +127,7 @@ def analyze_route(req: RouteRequest):
             route=route_points,
             hazards=hazards,
             alternates=alternates,
+            alternate_categories_single=alternate_top3,
             
             summary_5line=summary_5line,
             summary_full=summary_full,
