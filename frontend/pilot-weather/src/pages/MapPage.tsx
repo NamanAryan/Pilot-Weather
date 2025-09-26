@@ -140,6 +140,12 @@ export default function MapPage() {
 
     if (markers) markers.addTo(map);
 
+    // Draw route line connecting airports
+    if (airports.length >= 2) {
+      const routeCoords = airports.map((a) => [a.latitude_deg!, a.longitude_deg!]);
+      L.polyline(routeCoords, { color: "#ec4899", weight: 3 }).addTo(map);
+    }
+
     if (airports.length > 0) {
       const group = L.featureGroup(
         airports.map((a) => L.marker([a.latitude_deg!, a.longitude_deg!]))

@@ -17,3 +17,4 @@ class RouteAnalysisResponse(BaseModel):
     alternate_categories_single: Optional[Dict[str, Optional[Airport]]] = None
     summary_5line: str
     summary_full: Optional[str] = None
+    detailed_report: Optional[str] = None

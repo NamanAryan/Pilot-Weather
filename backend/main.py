@@ -107,7 +107,7 @@ def analyze_route(req: RouteRequest):
             for i in range(len(req.airports) - 1):
                 segment = fetch_route(req.airports[i], req.airports[i + 1])
                 route_points.extend(segment)
-            hazards = map_hazards(route_points, pireps)
+            hazards = map_hazards(route_points, pireps, metars)
         except Exception as e:
             print(f"❌ Route error: {e}")
             route_points = []
@@ -135,6 +135,14 @@ def analyze_route(req: RouteRequest):
             summary_5line = f"Route: {' → '.join(req.airports)}"
             summary_full = f"Summary generation failed: {str(e)}"
 
+        print("📋 Generating detailed report...")
+        try:
+            from services.summary import generate_detailed_report
+            detailed_report = generate_detailed_report(metars, tafs, notams, pireps, route_points, alternates, req.airports)
+        except Exception as e:
+            print(f"❌ Detailed report error: {e}")
+            detailed_report = f"Detailed report generation failed: {str(e)}"
+
         print("✅ Building response...")
         return RouteAnalysisResponse(
             metars=metars,
@@ -148,6 +156,7 @@ def analyze_route(req: RouteRequest):
             
             summary_5line=summary_5line,
             summary_full=summary_full,
+            detailed_report=detailed_report,
         )
         
     except Exception as e:

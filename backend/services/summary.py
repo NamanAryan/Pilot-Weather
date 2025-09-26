@@ -150,4 +150,166 @@ Dont be inconsistent with the format of briefing, keep all details as above ever
     except Exception as e:
         print(f"💥 Error calling Gemini API: {e}")
         return basic_summary, f"AI summary error: {str(e)}"
+
+
+def generate_detailed_report(
+    metars: List[Metar],
+    tafs: List[Taf],
+    notams: List[Notam],
+    pireps: List[Pirep],
+    route_points: List,
+    alternates: List,
+    airports: List[str]
+) -> str:
+    """Generate a detailed 7-section flight briefing using Gemini LLM with raw AVWX data."""
+    
+    if not GEMINI_API_KEY:
+        return "Configure GEMINI_API_KEY for detailed AI-powered reports"
+    
+    try:
+        print("🤖 Generating detailed report with Gemini...")
+        
+        model = "gemini-2.5-flash"
+        route_str = " → ".join(airports)
+        
+        # Prepare detailed data for Gemini
+        metar_data = "\n".join([f"{m.station}: {m.raw_text}" for m in metars if m.raw_text])
+        taf_data = "\n".join([f"{t.station}: {t.raw_text}" for t in tafs if t.raw_text])
+        notam_data = "\n".join([f"{n.airport} - {n.text}" for n in notams])
+        pirep_data = "\n".join([f"{p.location}: {p.report}" for p in pireps])
+        alternate_data = "\n".join([f"{a.icao}: {a.name}" for a in alternates[:5]])
+        
+        prompt = f"""You are a professional flight dispatcher. Create a comprehensive 7-section pre-flight weather briefing using ONLY the raw AVWX API data provided below.
+
+Route: {route_str}
+
+=== RAW AVWX DATA ===
+
+METAR Data:
+{metar_data}
+
+TAF Data:
+{taf_data}
+
+NOTAM Data:
+{notam_data}
+
+PIREP Data:
+{pirep_data}
+
+Alternate Airports:
+{alternate_data}
+
+Route Points: {len(route_points)} coordinates
+
+=== FORMATTING REQUIREMENTS ===
+
+Create a detailed briefing with these EXACT 7 sections (use these exact titles):
+
+1. FLIGHT OVERVIEW
+- Route summary with airport names
+- Route type (direct/multi-leg)
+- Total waypoints
+- Safety note based on data
+
+2. DEPARTURE AIRPORT ({airports[0] if airports else 'N/A'})
+- METAR analysis (raw + decoded)
+- TAF forecast if available
+- Active NOTAMs for this airport
+- Airport information
+
+3. ENROUTE SEGMENT
+- Route analysis
+- PIREPs with altitude and location
+- Weather hazards from METARs
+- NOTAMs affecting route
+
+4. DESTINATION AIRPORT ({airports[-1] if airports else 'N/A'})
+- METAR analysis (raw + decoded)
+- TAF forecast if available
+- Active NOTAMs for this airport
+- Landing conditions
+
+5. ALTERNATE AIRPORTS
+- List top 5 alternates
+- Rank by proximity/safety
+
+6. HAZARD & RISK ASSESSMENT
+- Risk level (LOW/MODERATE/HIGH)
+- Weather hazards from METAR analysis
+- NOTAMs summary
+- Recommended actions
+
+7. OPERATIONAL NOTES
+- Flight planning details
+- Data sources
+- Last updated
+- Pilot advisories
+
+CRITICAL FORMATTING RULES:
+- Start each section with "1. SECTION NAME" (exactly as shown above)
+- Use bullet points with "- " prefix for all items
+- Use clean headers with "HEADER:" format for subsections (NO ** formatting)
+- Use ONLY the raw data provided above
+- Decode METAR/TAF data professionally
+- Extract hazards from METAR codes (TS, SH, FG, IC, etc.)
+- Be specific about wind, visibility, clouds, temperature
+- Include all NOTAMs and PIREPs
+- Make it comprehensive and professional
+- Use clean, readable text without markdown formatting
+- Highlight risk levels clearly (LOW RISK, MODERATE RISK, HIGH RISK)
+
+Start directly with "1. FLIGHT OVERVIEW" - no introduction or preamble."""
+        
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        headers = {
+            "x-goog-api-key": GEMINI_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        print(f"🌐 Making detailed report request to: {url}")
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        
+        print(f"🤖 Detailed Report Response Status: {response.status_code}")
+        
+        if response.status_code != 200:
+            error_text = response.text
+            print(f"❌ Gemini API Error: {error_text}")
+            return f"AI detailed report failed: {error_text}"
+        
+        result = response.json()
+        print(f"📄 Detailed Report Response: {result}")
+        
+        if "candidates" in result and len(result["candidates"]) > 0:
+            candidate = result["candidates"][0]
+            if "content" in candidate and "parts" in candidate["content"]:
+                ai_text = candidate["content"]["parts"][0]["text"]
+                print("✅ Successfully generated detailed report")
+                return ai_text.strip()
+            else:
+                print("❌ Unexpected response structure")
+                return "AI detailed report format error"
+        else:
+            print("❌ No candidates in response")
+            return "No AI detailed report generated"
+        
+    except requests.exceptions.Timeout:
+        print("⏱ Gemini API request timed out")
+        return "AI detailed report timed out"
+    except Exception as e:
+        print(f"💥 Error calling Gemini API: {e}")
+        return f"AI detailed report error: {str(e)}"
     

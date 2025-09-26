@@ -133,9 +133,59 @@ def fetch_route(src: str, dest: str) -> List[RoutePoint]:
     # Use great circle calculation with 64 segments for smooth curves
     return _great_circle_points(lat1, lon1, lat2, lon2, segments=64)
 
-def map_hazards(route: List[RoutePoint], pireps: List[Pirep]) -> List[str]:
+def map_hazards(route: List[RoutePoint], pireps: List[Pirep], metars: List = None) -> List[str]:
     hazards = []
+    
+    # Analyze PIREPs for turbulence
     for p in pireps:
         if p.altitude and 28000 <= p.altitude <= 36000:
             hazards.append(f"Turbulence reported at FL{p.altitude//100} near {p.location}")
+    
+    # Analyze METARs for weather hazards
+    if metars:
+        for metar in metars:
+            if not metar.raw_text:
+                continue
+                
+            raw_text = metar.raw_text.upper()
+            
+            # Check for thunderstorms
+            if "TS" in raw_text or "THUNDERSTORM" in raw_text:
+                hazards.append(f"Thunderstorm activity reported at {metar.station}")
+            
+            # Check for heavy precipitation
+            if "SH" in raw_text or "SHOWER" in raw_text:
+                if "DISTANT" in raw_text:
+                    hazards.append(f"Distant showers reported near {metar.station}")
+                else:
+                    hazards.append(f"Showers reported at {metar.station}")
+            
+            # Check for low visibility
+            if "FG" in raw_text or "FOG" in raw_text:
+                hazards.append(f"Fog conditions at {metar.station}")
+            
+            # Check for icing conditions
+            if "IC" in raw_text or "ICE" in raw_text:
+                hazards.append(f"Icing conditions reported at {metar.station}")
+            
+            # Check for strong winds
+            if "G" in raw_text and any(char.isdigit() for char in raw_text):
+                # Look for gust patterns like "G25KT" or "G30KT"
+                import re
+                gusts = re.findall(r'G(\d+)KT', raw_text)
+                if gusts and int(gusts[0]) > 20:
+                    hazards.append(f"Strong gusts up to {gusts[0]}KT at {metar.station}")
+            
+            # Check for low ceilings
+            if "OVC" in raw_text or "BKN" in raw_text:
+                # Look for low cloud heights
+                import re
+                clouds = re.findall(r'(OVC|BKN)(\d{3})', raw_text)
+                for cloud_type, height in clouds:
+                    height_ft = int(height) * 100
+                    if height_ft < 1000:
+                        hazards.append(f"Low ceiling {height_ft}ft at {metar.station}")
+                    elif height_ft < 3000:
+                        hazards.append(f"Marginal ceiling {height_ft}ft at {metar.station}")
+    
     return hazards
