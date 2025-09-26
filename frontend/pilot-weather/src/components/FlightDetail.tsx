@@ -144,6 +144,32 @@ function summarizeMetar(metar: Metar): string {
   return parts.length > 0 ? parts.join(". ") : "Standard conditions";
 }
 
+// Function to detect thunderstorms in METAR data
+function hasThunderstorm(metar: Metar): boolean {
+  if (!metar || !metar.raw_text) return false;
+  const rawText = metar.raw_text.toUpperCase();
+  return rawText.includes("TS") || rawText.includes("THUNDERSTORM") || rawText.includes("TEMPO");
+}
+
+// Function to generate thunderstorm polygon coordinates around an airport
+function generateThunderstormPolygon(lat: number, lon: number, radiusKm: number = 25): Array<[number, number]> {
+  const points: Array<[number, number]> = [];
+  const numPoints = 12; // Number of points to create a circular polygon
+  
+  for (let i = 0; i < numPoints; i++) {
+    const angle = (i * 360) / numPoints;
+    const radians = (angle * Math.PI) / 180;
+    
+    // Convert km to degrees (approximate)
+    const latOffset = (radiusKm / 111) * Math.cos(radians);
+    const lonOffset = (radiusKm / (111 * Math.cos(lat * Math.PI / 180))) * Math.sin(radians);
+    
+    points.push([lat + latOffset, lon + lonOffset]);
+  }
+  
+  return points;
+}
+
 // Function to extract airport-specific summary from AI-generated briefing
 function getAirportSpecificSummary(airportCode: string, aiSummary: string, metar: Metar): string {
   if (!aiSummary) {
@@ -282,6 +308,46 @@ function RouteMap({
           // Extract airport-specific summary from AI-generated briefing
           const clickSummary = getAirportSpecificSummary(code, briefing.summary_5line, metar);
 
+          // Check for thunderstorms and add red polygon if present
+          if (metar && hasThunderstorm(metar)) {
+            const thunderstormPolygon = generateThunderstormPolygon(
+              info.latitude_deg, 
+              info.longitude_deg, 
+              25 // 25km radius
+            );
+            
+            const polygon = L.polygon(thunderstormPolygon, {
+              color: '#dc2626', // Red color
+              weight: 2,
+              opacity: 0.8,
+              fillColor: '#dc2626',
+              fillOpacity: 0.3
+            });
+            
+            polygon.bindTooltip(`⚠️ Thunderstorm Activity at ${code}`, {
+              direction: "center",
+              className: "thunderstorm-tooltip",
+              permanent: false
+            });
+            
+            polygon.bindPopup(
+              `
+              <div style="font-family: Arial, sans-serif; max-width: 300px;">
+                <h3 style="margin: 0 0 8px 0; color: #dc2626; font-size: 16px;">⚠️ Thunderstorm Warning</h3>
+                <p style="margin: 0; color: #374151; line-height: 1.4;"><strong>${code}</strong></p>
+                <p style="margin: 4px 0; color: #374151; line-height: 1.4;">${metar.raw_text}</p>
+                <p style="margin: 8px 0 0 0; color: #dc2626; font-size: 12px; font-weight: bold;">Exercise extreme caution when flying in this area.</p>
+              </div>
+            `,
+              {
+                maxWidth: 320,
+                className: "thunderstorm-popup",
+              }
+            );
+            
+            polygon.addTo(map);
+          }
+
           const marker = L.marker([info.latitude_deg, info.longitude_deg]);
 
           // Tooltip on hover (full raw METAR)
@@ -348,6 +414,28 @@ function RouteMap({
           .airport-popup .leaflet-popup-tip {
             background: white;
           }
+          .thunderstorm-popup .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3);
+            border: 2px solid #dc2626;
+          }
+          .thunderstorm-popup .leaflet-popup-content {
+            margin: 12px 16px;
+            line-height: 1.4;
+          }
+          .thunderstorm-popup .leaflet-popup-tip {
+            background: #dc2626;
+          }
+          .thunderstorm-tooltip {
+            background: #dc2626 !important;
+            color: white !important;
+            border: none !important;
+            font-weight: bold !important;
+            font-size: 12px !important;
+          }
+          .thunderstorm-tooltip::before {
+            border-top-color: #dc2626 !important;
+          }
         `;
         document.head.appendChild(style);
 
@@ -406,8 +494,8 @@ function RouteMap({
 // Detailed Report Component - Formats AI-generated report with proper styling
 function DetailedReport({ 
   briefing, 
-  flight, 
-  airportInfoMap 
+  flight: _flight, 
+  airportInfoMap: _airportInfoMap 
 }: { 
   briefing: Briefing; 
   flight: any; 
