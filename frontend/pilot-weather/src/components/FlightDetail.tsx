@@ -24,12 +24,17 @@ export default function FlightDetail() {
   const [briefingLoading, setBriefingLoading] = useState(false);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
-  const [airportNames, setAirportNames] = useState<Record<string, string | null>>({});
+  const [airportNames, setAirportNames] = useState<
+    Record<string, string | null>
+  >({});
 
   const route = useMemo(() => {
     if (!flight) return "";
-    const parts = [flight.departure, ...(flight.intermediates || []), flight.arrival]
-      .filter(Boolean);
+    const parts = [
+      flight.departure,
+      ...(flight.intermediates || []),
+      flight.arrival,
+    ].filter(Boolean);
     return parts.join(" ");
   }, [flight]);
 
@@ -53,10 +58,19 @@ export default function FlightDetail() {
           const dep = parts[0];
           const arr = parts[parts.length - 1];
           const mids = parts.slice(1, -1);
-          setFlight({ id: "route", departure: dep, arrival: arr, intermediates: mids, planned_at: null });
+          setFlight({
+            id: "route",
+            departure: dep,
+            arrival: arr,
+            intermediates: mids,
+            planned_at: null,
+          });
         }
       } catch (e) {
-        toast({ title: "Failed to load flight", description: e instanceof Error ? e.message : "" });
+        toast({
+          title: "Failed to load flight",
+          description: e instanceof Error ? e.message : "",
+        });
       } finally {
         setLoadingFlight(false);
       }
@@ -68,10 +82,16 @@ export default function FlightDetail() {
     const loadNames = async () => {
       if (!route) return;
       try {
-        const resp = await fetch(`http://localhost:8000/airport-info?codes=${encodeURIComponent(route)}`);
+        const resp = await fetch(
+          `http://localhost:8000/airport-info?codes=${encodeURIComponent(
+            route
+          )}`
+        );
         const data = await resp.json();
         const map: Record<string, string | null> = {};
-        (data || []).forEach((r: any) => { map[r.icao] = r.name ?? null; });
+        (data || []).forEach((r: any) => {
+          map[r.icao] = r.name ?? null;
+        });
         setAirportNames(map);
       } catch {
         // ignore name errors
@@ -99,7 +119,10 @@ export default function FlightDetail() {
       setLastRefreshedAt(new Date().toISOString());
       toast({ title: "Refreshed", description: "Latest briefing loaded" });
     } catch (e) {
-      toast({ title: "Briefing failed", description: e instanceof Error ? e.message : "" });
+      toast({
+        title: "Briefing failed",
+        description: e instanceof Error ? e.message : "",
+      });
     } finally {
       setBriefingLoading(false);
     }
@@ -115,28 +138,44 @@ export default function FlightDetail() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            className="gap-2"
+          >
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
-          <div className="text-sm text-gray-600">{flight?.planned_at && new Date(flight.planned_at).toLocaleString()}</div>
+          <div className="text-sm text-gray-600">
+            {flight?.planned_at && new Date(flight.planned_at).toLocaleString()}
+          </div>
         </div>
 
         <Card className="bg-white/80 backdrop-blur border-0 shadow-lg mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Plane className="w-5 h-5 text-blue-600" />
-              {loadingFlight ? "Loading flight..." : `${flight?.departure} → ${(flight?.intermediates || []).join(" ")} ${flight?.arrival}`}
+              {loadingFlight
+                ? "Loading flight..."
+                : `${flight?.departure} → ${(flight?.intermediates || []).join(
+                    " "
+                  )} ${flight?.arrival}`}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {/* Names Row */}
             {!loadingFlight && (
               <div className="text-sm text-gray-700 mb-3">
-                {[flight?.departure, ...(flight?.intermediates || []), flight?.arrival]
+                {[
+                  flight?.departure,
+                  ...(flight?.intermediates || []),
+                  flight?.arrival,
+                ]
                   .filter(Boolean)
                   .map((code: string, idx: number, arr: string[]) => (
                     <span key={idx}>
-                      <span className="font-medium">{airportNames[code] || ""}</span>
+                      <span className="font-medium">
+                        {airportNames[code] || ""}
+                      </span>
                       {idx < arr.length - 1 && <span className="mx-2">→</span>}
                     </span>
                   ))}
@@ -145,11 +184,20 @@ export default function FlightDetail() {
             <div className="flex items-center justify-between">
               <div className="text-xs text-gray-500">
                 {lastRefreshedAt && (
-                  <>Last refreshed at {new Date(lastRefreshedAt).toLocaleString()}</>
+                  <>
+                    Last refreshed at{" "}
+                    {new Date(lastRefreshedAt).toLocaleString()}
+                  </>
                 )}
               </div>
-              <Button onClick={fetchBriefing} disabled={briefingLoading || !route} className="gap-2">
-                <RefreshCw className={`w-4 h-4 ${briefingLoading ? "animate-spin" : ""}`} />
+              <Button
+                onClick={fetchBriefing}
+                disabled={briefingLoading || !route}
+                className="gap-2"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${briefingLoading ? "animate-spin" : ""}`}
+                />
                 {briefingLoading ? "Refreshing..." : "Refresh"}
               </Button>
             </div>
@@ -157,10 +205,14 @@ export default function FlightDetail() {
         </Card>
 
         {briefingLoading && (
-          <div className="mb-6 text-gray-600">Fetching latest weather and recalculating summary...</div>
+          <div className="mb-6 text-gray-600">
+            Fetching latest weather and recalculating summary...
+          </div>
         )}
         {!briefingLoading && !briefing && (
-          <div className="mb-6 text-amber-700">No briefing yet. Click Refresh to fetch.</div>
+          <div className="mb-6 text-amber-700">
+            No briefing yet. Click Refresh to fetch.
+          </div>
         )}
 
         {briefing && (
@@ -174,10 +226,14 @@ export default function FlightDetail() {
                   {(() => {
                     const lines = (briefing.summary_5line || "")
                       .split(/\r?\n/)
-                      .map(l => l.trim())
-                      .filter(l => l.length > 0);
+                      .map((l) => l.trim())
+                      .filter((l) => l.length > 0);
                     if (lines.length <= 1) {
-                      return <p className="whitespace-pre-line">{briefing.summary_5line}</p>;
+                      return (
+                        <p className="whitespace-pre-line">
+                          {briefing.summary_5line}
+                        </p>
+                      );
                     }
                     return (
                       <ul className="list-disc pl-5 space-y-1">
@@ -195,15 +251,20 @@ export default function FlightDetail() {
               <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Plane className="w-5 h-5 text-blue-600" /> Current Weather (METARs)
+                    <Plane className="w-5 h-5 text-blue-600" /> Current Weather
+                    (METARs)
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-3">
                     {briefing.metars.map((m, i) => (
                       <div key={i} className="bg-gray-50 rounded-lg p-4">
-                        <div className="font-semibold text-blue-600 mb-1">{m.station}</div>
-                        <div className="text-sm text-gray-700 font-mono">{m.raw_text}</div>
+                        <div className="font-semibold text-blue-600 mb-1">
+                          {m.station}
+                        </div>
+                        <div className="text-sm text-gray-700 font-mono">
+                          {m.raw_text}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -215,31 +276,88 @@ export default function FlightDetail() {
               <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <MapPin className="w-5 h-5 text-green-600" /> Alternate Airports
+                    <MapPin className="w-5 h-5 text-green-600" /> Alternate
+                    Airports
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {"alternate_categories_single" in briefing && (briefing as any).alternate_categories_single ? (
+                  {"alternate_categories_single" in briefing &&
+                  (briefing as any).alternate_categories_single ? (
                     <div className="grid md:grid-cols-3 gap-4">
                       {[
-                        { key: "best_fuel_efficiency", label: "Best Fuel Efficiency" },
+                        {
+                          key: "best_fuel_efficiency",
+                          label: "Best Fuel Efficiency",
+                        },
                         { key: "least_deviation", label: "Least Deviation" },
                         { key: "safest", label: "Safest for Emergencies" },
                       ].map((cat) => {
-                        const a = (briefing as any).alternate_categories_single[cat.key];
+                        const a = (briefing as any).alternate_categories_single[
+                          cat.key
+                        ];
+                        const colorMap: Record<
+                          string,
+                          {
+                            bg: string;
+                            icon: string;
+                            code: string;
+                            name: string;
+                          }
+                        > = {
+                          best_fuel_efficiency: {
+                            bg: "bg-yellow-50",
+                            icon: "text-yellow-600",
+                            code: "text-yellow-800",
+                            name: "text-yellow-700",
+                          },
+                          least_deviation: {
+                            bg: "bg-green-100",
+                            icon: "text-green-800",
+                            code: "text-green-900",
+                            name: "text-green-800",
+                          },
+                          safest: {
+                            bg: "bg-red-50",
+                            icon: "text-red-600",
+                            code: "text-red-800",
+                            name: "text-red-700",
+                          },
+                        };
+                        const styles = colorMap[cat.key] ?? {
+                          bg: "bg-green-50",
+                          icon: "text-green-600",
+                          code: "text-green-800",
+                          name: "text-green-700",
+                        };
                         return (
                           <div key={cat.key}>
-                            <h4 className="font-semibold text-gray-800 mb-2">{cat.label}</h4>
+                            <h4 className="font-semibold text-gray-800 mb-2">
+                              {cat.label}
+                            </h4>
                             {a ? (
-                              <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                                <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                              <div
+                                className={`flex items-center gap-2 p-3 ${styles.bg} rounded-lg`}
+                              >
+                                <MapPin
+                                  className={`w-4 h-4 ${styles.icon} flex-shrink-0`}
+                                />
                                 <div>
-                                  <span className="font-semibold text-green-800">{a.icao}</span>
-                                  <span className="text-sm text-green-700 ml-2">{a.name}</span>
+                                  <span
+                                    className={`font-semibold ${styles.code}`}
+                                  >
+                                    {a.icao}
+                                  </span>
+                                  <span
+                                    className={`text-sm ml-2 ${styles.name}`}
+                                  >
+                                    {a.name}
+                                  </span>
                                 </div>
                               </div>
                             ) : (
-                              <div className="text-sm text-gray-500">No suggestion</div>
+                              <div className="text-sm text-gray-500">
+                                No suggestion
+                              </div>
                             )}
                           </div>
                         );
@@ -248,11 +366,18 @@ export default function FlightDetail() {
                   ) : (
                     <div className="space-y-2">
                       {briefing.alternates.map((a, i) => (
-                        <div key={i} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
+                        >
                           <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
                           <div>
-                            <span className="font-semibold text-green-800">{a.icao}</span>
-                            <span className="text-sm text-green-700 ml-2">{a.name}</span>
+                            <span className="font-semibold text-green-800">
+                              {a.icao}
+                            </span>
+                            <span className="text-sm text-green-700 ml-2">
+                              {a.name}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -267,5 +392,3 @@ export default function FlightDetail() {
     </div>
   );
 }
-
-
