@@ -20,7 +20,7 @@ app = FastAPI(title="Aviation Pre-Flight Assistant")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,7 +42,7 @@ def analyze_route(req: RouteRequest):
         raise HTTPException(status_code=400, detail="At least 2 airports required")
 
     try:
-        print("🌤️ Fetching weather data...")
+        print("🌤 Fetching weather data...")
         metars = []
         tafs = []
         
@@ -66,14 +66,14 @@ def analyze_route(req: RouteRequest):
             except Exception as e:
                 print(f"❌ NOTAM error for {code}: {e}")
         
-        print("✈️ Fetching PIREPs...")
+        print("✈ Fetching PIREPs...")
         try:
             pireps = fetch_pireps(req.airports)
         except Exception as e:
             print(f"❌ PIREP error: {e}")
             pireps = []
         
-        print("🗺️ Processing route...")
+        print("🗺 Processing route...")
         try:
             route_points = fetch_route(req.airports[0], req.airports[-1])
             hazards = map_hazards(route_points, pireps)
@@ -115,5 +115,3 @@ def analyze_route(req: RouteRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-

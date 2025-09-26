@@ -56,12 +56,12 @@ def summarize_weather(
     if notams:
         critical_notams = [n for n in notams if n.critical]
         if critical_notams:
-            summary_lines.append(f"⚠️ {len(critical_notams)} critical NOTAMs")
+            summary_lines.append(f"⚠ {len(critical_notams)} critical NOTAMs")
         else:
             summary_lines.append(f"📋 {len(notams)} NOTAMs active")
     
     if pireps:
-        summary_lines.append(f"✈️ {len(pireps)} pilot reports available")
+        summary_lines.append(f"✈ {len(pireps)} pilot reports available")
     
     basic_summary = "\n".join(summary_lines)
     
@@ -87,8 +87,8 @@ Pilot Reports: {len(pireps)}
 
 Provide a brief 4-line pilot briefing focusing on:
 Start directly with the answer, no filler lines
-1. Brief summary of weather condition from first airport
-2. Brief summary of weather condition from second airport
+1. Brief summary of weather condition from first airport in simple english terms (winds 280 at 10 knots, 1000ft clouds,10sm visibility)
+2. Brief summary of weather condition from second airport in simple english terms
 3. Brief of NOTAMs or SIGMETs if any
 4. Any reported PIREPs
 5. Any hazards along the route"""
@@ -143,7 +143,7 @@ Start directly with the answer, no filler lines
             return basic_summary, "No AI response generated"
         
     except requests.exceptions.Timeout:
-        print("⏱️ Gemini API request timed out")
+        print("⏱ Gemini API request timed out")
         return basic_summary, "AI summary timed out"
     except Exception as e:
         print(f"💥 Error calling Gemini API: {e}")
