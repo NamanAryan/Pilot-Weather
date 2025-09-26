@@ -108,7 +108,12 @@ def analyze_route(req: RouteRequest):
         except Exception as e:
             print(f"❌ Alternates error: {e}")
             alternates = []
-            alternate_top3 = {"least_deviation": None, "best_fuel_efficiency": None, "safest": None}
+            from models.response import Airport  # Ensure Airport is imported for type hinting
+            alternate_top3: dict[str, Airport | None] = {
+                "least_deviation": None,
+                "best_fuel_efficiency": None,
+                "safest": None
+            }
         
         print("📝 Generating summary...")
         try:

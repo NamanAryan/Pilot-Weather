@@ -259,12 +259,12 @@ def get_alternate_airports_categorized(
             "type_rank": type_rank,
         })
 
-    least_deviation = [p["airport"] for p in sorted(pool, key=lambda p: p["distance_nm"])[:max_results]]  # type: ignore[index]
-    best_fuel_efficiency = [
+    least_deviation: List[Airport] = [p["airport"] for p in sorted(pool, key=lambda p: p["distance_nm"])[:max_results]]  # type: ignore[index]
+    best_fuel_efficiency: List[Airport] = [
         p["airport"]
         for p in sorted(pool, key=lambda p: (p["distance_nm"], -p["runway_m"]))[:max_results]  # type: ignore[index]
     ]
-    safest = [
+    safest: List[Airport] = [
         p["airport"]
         for p in sorted(pool, key=lambda p: (-p["runway_m"], p["type_rank"], p["distance_nm"]))[:max_results]  # type: ignore[index]
     ]
