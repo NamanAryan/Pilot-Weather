@@ -38,7 +38,10 @@ def health():
 
 @app.get("/airport-info")
 def airport_info(codes: str | None = None):
-    """Return basic info (icao, name) for a comma/space-separated list of ICAO codes."""
+    """Return basic info for ICAO codes, including coords if available.
+
+    Returns objects: {icao, name, latitude_deg, longitude_deg}
+    """
     if not codes:
         return []
     results = []
@@ -46,7 +49,12 @@ def airport_info(codes: str | None = None):
         try:
             info = get_airport_info(raw)
             if info:
-                results.append({"icao": info.get("icao"), "name": info.get("name")})
+                results.append({
+                    "icao": info.get("icao"),
+                    "name": info.get("name"),
+                    "latitude_deg": info.get("latitude_deg"),
+                    "longitude_deg": info.get("longitude_deg"),
+                })
             else:
                 results.append({"icao": raw.upper(), "name": None})
         except Exception:

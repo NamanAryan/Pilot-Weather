@@ -7,7 +7,21 @@ import { Label } from "./ui/label";
 import DateTimePicker from "./ui/DateTimePicker";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
-import { Plane, Route, AlertTriangle, MapPin, LogOut, Send, Plus, Clock, History, Search, Equal, Trash2 } from "lucide-react";
+import {
+  Plane,
+  Route,
+  AlertTriangle,
+  MapPin,
+  LogOut,
+  Send,
+  Plus,
+  Clock,
+  History,
+  Search,
+  Equal,
+  Trash2,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface Briefing {
   summary_5line: string;
@@ -86,7 +100,9 @@ const Dashboard = () => {
       setLoadingFlights(true);
       const { data, error } = await supabase
         .from("flights")
-        .select("id,user_id,departure,arrival,intermediates,planned_at,created_at")
+        .select(
+          "id,user_id,departure,arrival,intermediates,planned_at,created_at"
+        )
         .eq("user_id", uid)
         .order("planned_at", { ascending: true, nullsFirst: false });
       if (error) throw error;
@@ -105,7 +121,10 @@ const Dashboard = () => {
       setUpcomingFlights(upcoming);
       setPastFlights(past.reverse());
     } catch (e) {
-      toast({ title: "Could not load flights", description: e instanceof Error ? e.message : "" });
+      toast({
+        title: "Could not load flights",
+        description: e instanceof Error ? e.message : "",
+      });
     } finally {
       setLoadingFlights(false);
     }
@@ -130,7 +149,15 @@ const Dashboard = () => {
       return;
     }
     // Navigate to detail page using route string
-    briefFromFlight({ id: "route", user_id: user?.id, departure: route.trim().split(/\s+/)[0], arrival: route.trim().split(/\s+/).slice(-1)[0], intermediates: route.trim().split(/\s+/).slice(1, -1), planned_at: null, created_at: new Date().toISOString() } as any);
+    briefFromFlight({
+      id: "route",
+      user_id: user?.id,
+      departure: route.trim().split(/\s+/)[0],
+      arrival: route.trim().split(/\s+/).slice(-1)[0],
+      intermediates: route.trim().split(/\s+/).slice(1, -1),
+      planned_at: null,
+      created_at: new Date().toISOString(),
+    } as any);
   };
 
   const addIntermediate = () => {
@@ -138,7 +165,9 @@ const Dashboard = () => {
   };
 
   const updateIntermediate = (idx: number, value: string) => {
-    setIntermediates((prev) => prev.map((v, i) => (i === idx ? value.toUpperCase() : v)));
+    setIntermediates((prev) =>
+      prev.map((v, i) => (i === idx ? value.toUpperCase() : v))
+    );
   };
 
   const removeIntermediate = (idx: number) => {
@@ -147,18 +176,29 @@ const Dashboard = () => {
 
   const saveFlight = async () => {
     if (!user) {
-      toast({ title: "Sign in required", description: "Please sign in to save flights" });
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to save flights",
+      });
       return;
     }
     const dep = departure.trim().toUpperCase();
     const arr = arrival.trim().toUpperCase();
-    const mids = intermediates.map((i) => i.trim().toUpperCase()).filter(Boolean);
+    const mids = intermediates
+      .map((i) => i.trim().toUpperCase())
+      .filter(Boolean);
     if (!dep || !arr) {
-      toast({ title: "Missing fields", description: "Departure and arrival are required" });
+      toast({
+        title: "Missing fields",
+        description: "Departure and arrival are required",
+      });
       return;
     }
     if (!plannedAt) {
-      toast({ title: "Missing time", description: "Planned date and time is required" });
+      toast({
+        title: "Missing time",
+        description: "Planned date and time is required",
+      });
       return;
     }
     try {
@@ -172,14 +212,21 @@ const Dashboard = () => {
       };
       const { error } = await supabase.from("flights").insert(payload);
       if (error) throw error;
-       toast({ title: "Flight added", description: `${dep} → ${arr}`, variant: 'success' });
+      toast({
+        title: "Flight added",
+        description: `${dep} → ${arr}`,
+        variant: "success",
+      });
       setDeparture("");
       setArrival("");
       setIntermediates([]);
       setPlannedAt("");
       reloadFlights(user.id);
     } catch (e) {
-      toast({ title: "Save failed", description: e instanceof Error ? e.message : "" });
+      toast({
+        title: "Save failed",
+        description: e instanceof Error ? e.message : "",
+      });
     } finally {
       setSavingFlight(false);
     }
@@ -187,18 +234,23 @@ const Dashboard = () => {
 
   const deleteFlight = async (id: string) => {
     try {
-       const { error } = await supabase.from("flights").delete().eq("id", id);
+      const { error } = await supabase.from("flights").delete().eq("id", id);
       if (error) throw error;
       if (user?.id) reloadFlights(user.id);
-       toast({ title: "Flight deleted", variant: 'error' });
+      toast({ title: "Flight deleted", variant: "error" });
     } catch (e) {
-      toast({ title: "Delete failed", description: e instanceof Error ? e.message : "" });
+      toast({
+        title: "Delete failed",
+        description: e instanceof Error ? e.message : "",
+      });
     }
   };
 
   const briefFromFlight = async (f: FlightRow) => {
     if (f.id === "route") {
-      const parts = [f.departure, ...(f.intermediates || []), f.arrival].filter(Boolean).join(" ");
+      const parts = [f.departure, ...(f.intermediates || []), f.arrival]
+        .filter(Boolean)
+        .join(" ");
       navigate(`/brief?route=${encodeURIComponent(parts)}`);
     } else {
       navigate(`/flight/${f.id}`);
@@ -219,7 +271,9 @@ const Dashboard = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-gray-600">Please sign in to access your dashboard</div>
+        <div className="text-gray-600">
+          Please sign in to access your dashboard
+        </div>
       </div>
     );
   }
@@ -234,11 +288,19 @@ const Dashboard = () => {
               <Plane className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Welcome back, Pilot</h1>
-              <p className="text-sm text-gray-600">Aviation Weather Dashboard</p>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                Welcome back, Pilot
+              </h1>
+              <p className="text-sm text-gray-600">
+                Aviation Weather Dashboard
+              </p>
             </div>
           </div>
-          <Button onClick={handleSignOut} variant="outline" className="flex items-center gap-2">
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
             <LogOut className="w-4 h-4" />
             Sign Out
           </Button>
@@ -249,28 +311,62 @@ const Dashboard = () => {
           <div className="grid md:grid-cols-2 gap-6">
             <button
               onClick={() => setActivePanel("add")}
-              className={`p-10 rounded-2xl border text-left transition-all ${activePanel === "add" ? "bg-blue-600 text-white border-blue-700 shadow-lg" : "bg-white border-gray-200 hover:bg-gray-50"}`}
+              className={`p-10 rounded-2xl border text-left transition-all ${
+                activePanel === "add"
+                  ? "bg-blue-600 text-white border-blue-700 shadow-lg"
+                  : "bg-white border-gray-200 hover:bg-gray-50"
+              }`}
             >
               <div className="flex items-center gap-3">
-                <Equal className={`w-8 h-8 ${activePanel === "add" ? "text-white" : "text-blue-600"}`} />
+                <Equal
+                  className={`w-8 h-8 ${
+                    activePanel === "add" ? "text-white" : "text-blue-600"
+                  }`}
+                />
                 <div className="text-2xl font-semibold">Add Flight</div>
               </div>
-              <div className={`mt-3 text-base ${activePanel === "add" ? "text-blue-100" : "text-gray-600"}`}>Create and save a personalized flight</div>
+              <div
+                className={`mt-3 text-base ${
+                  activePanel === "add" ? "text-blue-100" : "text-gray-600"
+                }`}
+              >
+                Create and save a personalized flight
+              </div>
             </button>
             <button
               onClick={() => setActivePanel("search")}
-              className={`p-10 rounded-2xl border text-left transition-all ${activePanel === "search" ? "bg-blue-600 text-white border-blue-700 shadow-lg" : "bg-white border-gray-200 hover:bg-gray-50"}`}
+              className={`p-10 rounded-2xl border text-left transition-all ${
+                activePanel === "search"
+                  ? "bg-blue-600 text-white border-blue-700 shadow-lg"
+                  : "bg-white border-gray-200 hover:bg-gray-50"
+              }`}
             >
               <div className="flex items-center gap-3">
-                <Search className={`w-8 h-8 ${activePanel === "search" ? "text-white" : "text-blue-600"}`} />
+                <Search
+                  className={`w-8 h-8 ${
+                    activePanel === "search" ? "text-white" : "text-blue-600"
+                  }`}
+                />
                 <div className="text-2xl font-semibold">Search Flight</div>
               </div>
-              <div className={`mt-3 text-base ${activePanel === "search" ? "text-blue-100" : "text-gray-600"}`}>Run a one-off route briefing</div>
+              <div
+                className={`mt-3 text-base ${
+                  activePanel === "search" ? "text-blue-100" : "text-gray-600"
+                }`}
+              >
+                Run a one-off route briefing
+              </div>
             </button>
           </div>
 
           {/* Add Flight Panel */}
-          <Card className={`bg-white/80 backdrop-blur border-0 shadow-lg transition-all ${activePanel === "add" ? "opacity-100 scale-100" : "opacity-0 scale-95 h-0 overflow-hidden"}`}>
+          <Card
+            className={`bg-white/80 backdrop-blur border-0 shadow-lg transition-all ${
+              activePanel === "add"
+                ? "opacity-100 scale-100"
+                : "opacity-0 scale-95 h-0 overflow-hidden"
+            }`}
+          >
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Route className="w-5 h-5 text-blue-600" />
@@ -280,34 +376,85 @@ const Dashboard = () => {
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dep" className="text-sm font-medium text-gray-700">Departure</Label>
-                  <Input id="dep" value={departure} onChange={(e) => setDeparture(e.target.value.toUpperCase())} placeholder="e.g., KJFK" className="h-11 border-gray-200" />
+                  <Label
+                    htmlFor="dep"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Departure
+                  </Label>
+                  <Input
+                    id="dep"
+                    value={departure}
+                    onChange={(e) => setDeparture(e.target.value.toUpperCase())}
+                    placeholder="e.g., KJFK"
+                    className="h-11 border-gray-200"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="arr" className="text-sm font-medium text-gray-700">Arrival</Label>
-                  <Input id="arr" value={arrival} onChange={(e) => setArrival(e.target.value.toUpperCase())} placeholder="e.g., KLAX" className="h-11 border-gray-200" />
+                  <Label
+                    htmlFor="arr"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Arrival
+                  </Label>
+                  <Input
+                    id="arr"
+                    value={arrival}
+                    onChange={(e) => setArrival(e.target.value.toUpperCase())}
+                    placeholder="e.g., KLAX"
+                    className="h-11 border-gray-200"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium text-gray-700">Intermediate Airports</Label>
-                  <Button type="button" variant="outline" onClick={addIntermediate} className="h-9 gap-2"><Plus className="w-4 h-4" /> Add</Button>
+                  <Label className="text-sm font-medium text-gray-700">
+                    Intermediate Airports
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addIntermediate}
+                    className="h-9 gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </Button>
                 </div>
                 <div className="grid md:grid-cols-2 gap-3">
                   {intermediates.map((val, idx) => (
                     <div key={idx} className="flex gap-2">
-                      <Input value={val} onChange={(e) => updateIntermediate(idx, e.target.value)} placeholder="e.g., KORD" className="h-11 border-gray-200" />
-                      <Button type="button" variant="outline" onClick={() => removeIntermediate(idx)} className="h-11">×</Button>
+                      <Input
+                        value={val}
+                        onChange={(e) =>
+                          updateIntermediate(idx, e.target.value)
+                        }
+                        placeholder="e.g., KORD"
+                        className="h-11 border-gray-200"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => removeIntermediate(idx)}
+                        className="h-11"
+                      >
+                        ×
+                      </Button>
                     </div>
                   ))}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Planned Time</Label>
+                <Label className="text-sm font-medium text-gray-700">
+                  Planned Time
+                </Label>
                 <DateTimePicker value={plannedAt} onChange={setPlannedAt} />
               </div>
               <div className="flex justify-end">
-                <Button onClick={saveFlight} disabled={savingFlight} className="h-11 bg-blue-600 hover:bg-blue-700 text-white">
+                <Button
+                  onClick={saveFlight}
+                  disabled={savingFlight}
+                  className="h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                >
                   {savingFlight ? "Saving..." : "Add Flight"}
                 </Button>
               </div>
@@ -315,7 +462,13 @@ const Dashboard = () => {
           </Card>
 
           {/* Search Flight Panel */}
-          <Card className={`bg-white/80 backdrop-blur border-0 shadow-lg transition-all ${activePanel === "search" ? "opacity-100 scale-100" : "opacity-0 scale-95 h-0 overflow-hidden"}`}>
+          <Card
+            className={`bg-white/80 backdrop-blur border-0 shadow-lg transition-all ${
+              activePanel === "search"
+                ? "opacity-100 scale-100"
+                : "opacity-0 scale-95 h-0 overflow-hidden"
+            }`}
+          >
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Search className="w-5 h-5 text-blue-600" />
@@ -324,7 +477,10 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="route" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="route"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Enter your flight route
                 </Label>
                 <Input
@@ -366,22 +522,42 @@ const Dashboard = () => {
                 <History className="w-5 h-5 text-blue-600" />
                 Flight History
               </div>
-              <span className="text-sm text-gray-500">{historyOpen ? "Hide" : "Show"}</span>
+              <span className="text-sm text-gray-500">
+                {historyOpen ? "Hide" : "Show"}
+              </span>
             </button>
-            <CardContent className={`space-y-6 transition-all ${historyOpen ? "block" : "hidden"}`}>
+            <CardContent
+              className={`space-y-6 transition-all ${
+                historyOpen ? "block" : "hidden"
+              }`}
+            >
               <div>
-                <div className="flex items-center gap-2 mb-2 text-gray-800 font-semibold"><Clock className="w-4 h-4" /> Upcoming</div>
+                <div className="flex items-center gap-2 mb-2 text-gray-800 font-semibold">
+                  <Clock className="w-4 h-4" /> Upcoming
+                </div>
                 {loadingFlights ? (
                   <div className="text-sm text-gray-600">Loading...</div>
                 ) : upcomingFlights.length === 0 ? (
-                  <div className="text-sm text-gray-500">No upcoming flights</div>
+                  <div className="text-sm text-gray-500">
+                    No upcoming flights
+                  </div>
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {upcomingFlights.map((f) => (
                       <div key={f.id} className="group relative">
-                        <button onClick={() => briefFromFlight(f)} className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100">
-                          <div className="font-semibold text-blue-800">{f.departure} → {[...(f.intermediates || [])].join(" ")} {f.arrival}</div>
-                          {f.planned_at && <div className="text-xs text-blue-700 mt-1">{new Date(f.planned_at).toLocaleString()}</div>}
+                        <button
+                          onClick={() => briefFromFlight(f)}
+                          className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100"
+                        >
+                          <div className="font-semibold text-blue-800">
+                            {f.departure} →{" "}
+                            {[...(f.intermediates || [])].join(" ")} {f.arrival}
+                          </div>
+                          {f.planned_at && (
+                            <div className="text-xs text-blue-700 mt-1">
+                              {new Date(f.planned_at).toLocaleString()}
+                            </div>
+                          )}
                         </button>
                         <button
                           onClick={() => deleteFlight(f.id)}
@@ -397,7 +573,9 @@ const Dashboard = () => {
                 )}
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-2 text-gray-800 font-semibold"><History className="w-4 h-4" /> Past</div>
+                <div className="flex items-center gap-2 mb-2 text-gray-800 font-semibold">
+                  <History className="w-4 h-4" /> Past
+                </div>
                 {loadingFlights ? (
                   <div className="text-sm text-gray-600">Loading...</div>
                 ) : pastFlights.length === 0 ? (
@@ -406,9 +584,19 @@ const Dashboard = () => {
                   <div className="grid md:grid-cols-2 gap-3">
                     {pastFlights.map((f) => (
                       <div key={f.id} className="group relative">
-                        <button onClick={() => briefFromFlight(f)} className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100">
-                          <div className="font-semibold text-gray-800">{f.departure} → {[...(f.intermediates || [])].join(" ")} {f.arrival}</div>
-                          {f.planned_at && <div className="text-xs text-gray-600 mt-1">{new Date(f.planned_at).toLocaleString()}</div>}
+                        <button
+                          onClick={() => briefFromFlight(f)}
+                          className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100"
+                        >
+                          <div className="font-semibold text-gray-800">
+                            {f.departure} →{" "}
+                            {[...(f.intermediates || [])].join(" ")} {f.arrival}
+                          </div>
+                          {f.planned_at && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              {new Date(f.planned_at).toLocaleString()}
+                            </div>
+                          )}
                         </button>
                         <button
                           onClick={() => deleteFlight(f.id)}
@@ -483,9 +671,14 @@ const Dashboard = () => {
                     <CardContent>
                       <div className="space-y-2">
                         {briefing.hazards.map((hazard, idx) => (
-                          <div key={idx} className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg">
+                          <div
+                            key={idx}
+                            className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg"
+                          >
                             <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm text-amber-800">{hazard}</span>
+                            <span className="text-sm text-amber-800">
+                              {hazard}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -506,56 +699,98 @@ const Dashboard = () => {
                       {briefing.alternate_categories ? (
                         <div className="grid md:grid-cols-3 gap-4">
                           <div>
-                            <h4 className="font-semibold text-gray-800 mb-2">Least Deviation</h4>
+                            <h4 className="font-semibold text-gray-800 mb-2">
+                              Least Deviation
+                            </h4>
                             <div className="space-y-2">
-                              {(briefing.alternate_categories.least_deviation || []).map((alt, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                              {(
+                                briefing.alternate_categories.least_deviation ||
+                                []
+                              ).map((alt, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
+                                >
                                   <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
                                   <div>
-                                    <span className="font-semibold text-green-800">{alt.icao}</span>
-                                    <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                                    <span className="font-semibold text-green-800">
+                                      {alt.icao}
+                                    </span>
+                                    <span className="text-sm text-green-700 ml-2">
+                                      {alt.name}
+                                    </span>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-800 mb-2">Best Fuel Efficiency</h4>
+                            <h4 className="font-semibold text-gray-800 mb-2">
+                              Best Fuel Efficiency
+                            </h4>
                             <div className="space-y-2">
-                              {(briefing.alternate_categories.best_fuel_efficiency || []).map((alt, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                              {(
+                                briefing.alternate_categories
+                                  .best_fuel_efficiency || []
+                              ).map((alt, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
+                                >
                                   <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
                                   <div>
-                                    <span className="font-semibold text-green-800">{alt.icao}</span>
-                                    <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                                    <span className="font-semibold text-green-800">
+                                      {alt.icao}
+                                    </span>
+                                    <span className="text-sm text-green-700 ml-2">
+                                      {alt.name}
+                                    </span>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-800 mb-2">Safest</h4>
+                            <h4 className="font-semibold text-gray-800 mb-2">
+                              Safest
+                            </h4>
                             <div className="space-y-2">
-                              {(briefing.alternate_categories.safest || []).map((alt, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                                  <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <div>
-                                    <span className="font-semibold text-green-800">{alt.icao}</span>
-                                    <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                              {(briefing.alternate_categories.safest || []).map(
+                                (alt, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
+                                  >
+                                    <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                    <div>
+                                      <span className="font-semibold text-green-800">
+                                        {alt.icao}
+                                      </span>
+                                      <span className="text-sm text-green-700 ml-2">
+                                        {alt.name}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                )
+                              )}
                             </div>
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-2">
                           {(briefing.alternates || []).map((alt, idx) => (
-                            <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
+                            >
                               <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
                               <div>
-                                <span className="font-semibold text-green-800">{alt.icao}</span>
-                                <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                                <span className="font-semibold text-green-800">
+                                  {alt.icao}
+                                </span>
+                                <span className="text-sm text-green-700 ml-2">
+                                  {alt.name}
+                                </span>
                               </div>
                             </div>
                           ))}
