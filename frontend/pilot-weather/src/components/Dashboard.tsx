@@ -5,7 +5,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
-import { Plane, Route, AlertTriangle, MapPin, LogOut, Send } from "lucide-react";
+import { Plane, Route, AlertTriangle, MapPin, LogOut, Send, Plus, Clock, History, Search, Equal } from "lucide-react";
 
 interface Briefing {
   summary_5line: string;
@@ -25,6 +25,18 @@ interface Briefing {
   };
 }
 
+type FlightStatus = "upcoming" | "past";
+
+interface FlightRow {
+  id: string;
+  user_id: string;
+  departure: string;
+  arrival: string;
+  intermediates: string[] | null;
+  planned_at: string | null;
+  created_at: string;
+}
+
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +44,18 @@ const Dashboard = () => {
   const [briefingLoading, setBriefingLoading] = useState(false);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const { toast } = useToast();
+
+  // Flight planner state
+  const [departure, setDeparture] = useState("");
+  const [arrival, setArrival] = useState("");
+  const [intermediates, setIntermediates] = useState<string[]>([]);
+  const [plannedAt, setPlannedAt] = useState<string>("");
+  const [savingFlight, setSavingFlight] = useState(false);
+  const [loadingFlights, setLoadingFlights] = useState(false);
+  const [upcomingFlights, setUpcomingFlights] = useState<FlightRow[]>([]);
+  const [pastFlights, setPastFlights] = useState<FlightRow[]>([]);
+  const [activePanel, setActivePanel] = useState<"add" | "search" | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     const getInitialSession = async () => {
@@ -53,6 +77,42 @@ const Dashboard = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const reloadFlights = async (uid: string) => {
+    try {
+      setLoadingFlights(true);
+      const { data, error } = await supabase
+        .from("flights")
+        .select("id,user_id,departure,arrival,intermediates,planned_at,created_at")
+        .eq("user_id", uid)
+        .order("planned_at", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+
+      const now = new Date();
+      const upcoming: FlightRow[] = [];
+      const past: FlightRow[] = [];
+      (data || []).forEach((row) => {
+        const when = row.planned_at ? new Date(row.planned_at) : null;
+        if (when && when.getTime() >= now.getTime()) {
+          upcoming.push(row as FlightRow);
+        } else {
+          past.push(row as FlightRow);
+        }
+      });
+      setUpcomingFlights(upcoming);
+      setPastFlights(past.reverse());
+    } catch (e) {
+      toast({ title: "Could not load flights", description: e instanceof Error ? e.message : "" });
+    } finally {
+      setLoadingFlights(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      reloadFlights(user.id);
+    }
+  }, [user?.id]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -101,6 +161,64 @@ const Dashboard = () => {
     }
   };
 
+  const addIntermediate = () => {
+    if (intermediates.length >= 2) {
+      toast({ title: "Limit reached", description: "Maximum 2 intermediate airports" });
+      return;
+    }
+    setIntermediates([...intermediates, ""]);
+  };
+
+  const updateIntermediate = (idx: number, value: string) => {
+    setIntermediates((prev) => prev.map((v, i) => (i === idx ? value.toUpperCase() : v)));
+  };
+
+  const removeIntermediate = (idx: number) => {
+    setIntermediates((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const saveFlight = async () => {
+    if (!user) {
+      toast({ title: "Sign in required", description: "Please sign in to save flights" });
+      return;
+    }
+    const dep = departure.trim().toUpperCase();
+    const arr = arrival.trim().toUpperCase();
+    const mids = intermediates.map((i) => i.trim().toUpperCase()).filter(Boolean);
+    if (!dep || !arr) {
+      toast({ title: "Missing fields", description: "Departure and arrival are required" });
+      return;
+    }
+    try {
+      setSavingFlight(true);
+      const payload = {
+        user_id: user.id,
+        departure: dep,
+        arrival: arr,
+        intermediates: mids.length ? mids : null,
+        planned_at: plannedAt ? new Date(plannedAt).toISOString() : null,
+      };
+      const { error } = await supabase.from("flights").insert(payload);
+      if (error) throw error;
+      toast({ title: "Flight saved" });
+      setDeparture("");
+      setArrival("");
+      setIntermediates([]);
+      setPlannedAt("");
+      reloadFlights(user.id);
+    } catch (e) {
+      toast({ title: "Save failed", description: e instanceof Error ? e.message : "" });
+    } finally {
+      setSavingFlight(false);
+    }
+  };
+
+  const briefFromFlight = async (f: FlightRow) => {
+    const airports = [f.departure, ...(f.intermediates || []), f.arrival].filter(Boolean);
+    setRoute(airports.join(" "));
+    await getBriefing();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -123,14 +241,14 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-6xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        {/* Top Greeting & Sign Out */}
+        <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
               <Plane className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Flight Briefing</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">Welcome back, Pilot</h1>
               <p className="text-sm text-gray-600">Aviation Weather Dashboard</p>
             </div>
           </div>
@@ -141,29 +259,81 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-6">
-          {/* Welcome Card */}
-          <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
-            <CardContent className="pt-6">
+          {/* Toggle Buttons */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <button
+              onClick={() => setActivePanel("add")}
+              className={`p-10 rounded-2xl border text-left transition-all ${activePanel === "add" ? "bg-blue-600 text-white border-blue-700 shadow-lg" : "bg-white border-gray-200 hover:bg-gray-50"}`}
+            >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-lg">
-                    {user.email?.[0].toUpperCase()}
-                  </span>
+                <Equal className={`w-8 h-8 ${activePanel === "add" ? "text-white" : "text-blue-600"}`} />
+                <div className="text-2xl font-semibold">Add Flight</div>
+              </div>
+              <div className={`mt-3 text-base ${activePanel === "add" ? "text-blue-100" : "text-gray-600"}`}>Create and save a personalized flight</div>
+            </button>
+            <button
+              onClick={() => setActivePanel("search")}
+              className={`p-10 rounded-2xl border text-left transition-all ${activePanel === "search" ? "bg-blue-600 text-white border-blue-700 shadow-lg" : "bg-white border-gray-200 hover:bg-gray-50"}`}
+            >
+              <div className="flex items-center gap-3">
+                <Search className={`w-8 h-8 ${activePanel === "search" ? "text-white" : "text-blue-600"}`} />
+                <div className="text-2xl font-semibold">Search Flight</div>
+              </div>
+              <div className={`mt-3 text-base ${activePanel === "search" ? "text-blue-100" : "text-gray-600"}`}>Run a one-off route briefing</div>
+            </button>
+          </div>
+
+          {/* Add Flight Panel */}
+          <Card className={`bg-white/80 backdrop-blur border-0 shadow-lg transition-all ${activePanel === "add" ? "opacity-100 scale-100" : "opacity-0 scale-95 h-0 overflow-hidden"}`}>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Route className="w-5 h-5 text-blue-600" />
+                Add Flight
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dep" className="text-sm font-medium text-gray-700">Departure</Label>
+                  <Input id="dep" value={departure} onChange={(e) => setDeparture(e.target.value.toUpperCase())} placeholder="e.g., KJFK" className="h-11 border-gray-200" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Welcome back, Pilot</h3>
-                  <p className="text-sm text-gray-600">{user.email}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="arr" className="text-sm font-medium text-gray-700">Arrival</Label>
+                  <Input id="arr" value={arrival} onChange={(e) => setArrival(e.target.value.toUpperCase())} placeholder="e.g., KLAX" className="h-11 border-gray-200" />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700">Intermediate Airports (max 2)</Label>
+                  <Button type="button" variant="outline" onClick={addIntermediate} className="h-9 gap-2"><Plus className="w-4 h-4" /> Add</Button>
+                </div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {intermediates.map((val, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <Input value={val} onChange={(e) => updateIntermediate(idx, e.target.value)} placeholder="e.g., KORD" className="h-11 border-gray-200" />
+                      <Button type="button" variant="outline" onClick={() => removeIntermediate(idx)} className="h-11">×</Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="planned" className="text-sm font-medium text-gray-700">Planned Time (optional)</Label>
+                <Input id="planned" type="datetime-local" value={plannedAt} onChange={(e) => setPlannedAt(e.target.value)} className="h-11 border-gray-200" />
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={saveFlight} disabled={savingFlight} className="h-11 bg-blue-600 hover:bg-blue-700 text-white">
+                  {savingFlight ? "Saving..." : "Add Flight"}
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Route Input */}
-          <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
+          {/* Search Flight Panel */}
+          <Card className={`bg-white/80 backdrop-blur border-0 shadow-lg transition-all ${activePanel === "search" ? "opacity-100 scale-100" : "opacity-0 scale-95 h-0 overflow-hidden"}`}>
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Route className="w-5 h-5 text-blue-600" />
-                Flight Route
+                <Search className="w-5 h-5 text-blue-600" />
+                Search Flight
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -197,6 +367,56 @@ const Dashboard = () => {
                   </div>
                 )}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Flight History (collapsible, collapsed by default) */}
+          <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
+            <button
+              onClick={() => setHistoryOpen((v) => !v)}
+              className="w-full text-left px-6 pt-6 pb-4 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <History className="w-5 h-5 text-blue-600" />
+                Flight History
+              </div>
+              <span className="text-sm text-gray-500">{historyOpen ? "Hide" : "Show"}</span>
+            </button>
+            <CardContent className={`space-y-6 transition-all ${historyOpen ? "block" : "hidden"}`}>
+              <div>
+                <div className="flex items-center gap-2 mb-2 text-gray-800 font-semibold"><Clock className="w-4 h-4" /> Upcoming</div>
+                {loadingFlights ? (
+                  <div className="text-sm text-gray-600">Loading...</div>
+                ) : upcomingFlights.length === 0 ? (
+                  <div className="text-sm text-gray-500">No upcoming flights</div>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {upcomingFlights.map((f) => (
+                      <button key={f.id} onClick={() => briefFromFlight(f)} className="text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100">
+                        <div className="font-semibold text-blue-800">{f.departure} → {[...(f.intermediates || [])].join(" ")} {f.arrival}</div>
+                        {f.planned_at && <div className="text-xs text-blue-700 mt-1">{new Date(f.planned_at).toLocaleString()}</div>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2 text-gray-800 font-semibold"><History className="w-4 h-4" /> Past</div>
+                {loadingFlights ? (
+                  <div className="text-sm text-gray-600">Loading...</div>
+                ) : pastFlights.length === 0 ? (
+                  <div className="text-sm text-gray-500">No past flights</div>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {pastFlights.map((f) => (
+                      <button key={f.id} onClick={() => briefFromFlight(f)} className="text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100">
+                        <div className="font-semibold text-gray-800">{f.departure} → {[...(f.intermediates || [])].join(" ")} {f.arrival}</div>
+                        {f.planned_at && <div className="text-xs text-gray-600 mt-1">{new Date(f.planned_at).toLocaleString()}</div>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
