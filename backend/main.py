@@ -106,6 +106,7 @@ def analyze_route(req: RouteRequest):
             route=route_points,
             hazards=hazards,
             alternates=alternates,
+            
             summary_5line=summary_5line,
             summary_full=summary_full,
         )

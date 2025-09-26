@@ -18,6 +18,11 @@ interface Briefing {
     icao: string;
     name: string;
   }>;
+  alternate_categories?: {
+    least_deviation?: Array<{ icao: string; name?: string | null }>;
+    best_fuel_efficiency?: Array<{ icao: string; name?: string | null }>;
+    safest?: Array<{ icao: string; name?: string | null }>;
+  };
 }
 
 const Dashboard = () => {
@@ -262,8 +267,8 @@ const Dashboard = () => {
                   </Card>
                 )}
 
-                {/* Alternates */}
-                {briefing.alternates && briefing.alternates.length > 0 && (
+                {/* Alternates - Categorized */}
+                {(briefing.alternate_categories || briefing.alternates) && (
                   <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
                     <CardHeader className="pb-4">
                       <CardTitle className="flex items-center gap-2 text-lg">
@@ -272,17 +277,64 @@ const Dashboard = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-2">
-                        {briefing.alternates.map((alt, idx) => (
-                          <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                            <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            <div>
-                              <span className="font-semibold text-green-800">{alt.icao}</span>
-                              <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                      {briefing.alternate_categories ? (
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div>
+                            <h4 className="font-semibold text-gray-800 mb-2">Least Deviation</h4>
+                            <div className="space-y-2">
+                              {(briefing.alternate_categories.least_deviation || []).map((alt, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                                  <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-semibold text-green-800">{alt.icao}</span>
+                                    <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-800 mb-2">Best Fuel Efficiency</h4>
+                            <div className="space-y-2">
+                              {(briefing.alternate_categories.best_fuel_efficiency || []).map((alt, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                                  <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-semibold text-green-800">{alt.icao}</span>
+                                    <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-800 mb-2">Safest</h4>
+                            <div className="space-y-2">
+                              {(briefing.alternate_categories.safest || []).map((alt, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                                  <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-semibold text-green-800">{alt.icao}</span>
+                                    <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {(briefing.alternates || []).map((alt, idx) => (
+                            <div key={idx} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                              <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                              <div>
+                                <span className="font-semibold text-green-800">{alt.icao}</span>
+                                <span className="text-sm text-green-700 ml-2">{alt.name}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}

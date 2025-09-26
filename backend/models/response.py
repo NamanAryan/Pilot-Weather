@@ -13,5 +13,6 @@ class RouteAnalysisResponse(BaseModel):
     route: List[RoutePoint]
     hazards: List[str]
     alternates: List[Airport]
+    alternate_categories: Optional[dict] = None
     summary_5line: str
     summary_full: Optional[str] = None
