@@ -4,15 +4,23 @@ import { supabase } from "../supabaseClient";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
-import { ArrowLeft, RefreshCw, Plane, MapPin, FileText, Briefcase, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft,
+  RefreshCw,
+  Plane,
+  MapPin,
+  FileText,
+  Briefcase,
+  AlertTriangle,
+} from "lucide-react";
 // Simple tab implementation without external dependencies
 
 interface Briefing {
   summary_5line: string;
   summary_full?: string;
   detailed_report?: string;
-  metars?: Array<{ 
-    station: string; 
+  metars?: Array<{
+    station: string;
     raw_text: string;
     temperature?: number;
     wind?: string;
@@ -37,8 +45,8 @@ interface Briefing {
     location?: string;
   }>;
   hazards?: string[];
-  alternates?: Array<{ 
-    icao: string; 
+  alternates?: Array<{
+    icao: string;
     name?: string | null;
     lat?: number;
     lon?: number;
@@ -47,9 +55,33 @@ interface Briefing {
     has_customs?: boolean;
   }>;
   alternate_categories_single?: {
-    least_deviation?: { icao: string; name?: string | null; lat?: number; lon?: number; runway_length?: number; has_fuel?: boolean; has_customs?: boolean; } | null;
-    best_fuel_efficiency?: { icao: string; name?: string | null; lat?: number; lon?: number; runway_length?: number; has_fuel?: boolean; has_customs?: boolean; } | null;
-    safest?: { icao: string; name?: string | null; lat?: number; lon?: number; runway_length?: number; has_fuel?: boolean; has_customs?: boolean; } | null;
+    least_deviation?: {
+      icao: string;
+      name?: string | null;
+      lat?: number;
+      lon?: number;
+      runway_length?: number;
+      has_fuel?: boolean;
+      has_customs?: boolean;
+    } | null;
+    best_fuel_efficiency?: {
+      icao: string;
+      name?: string | null;
+      lat?: number;
+      lon?: number;
+      runway_length?: number;
+      has_fuel?: boolean;
+      has_customs?: boolean;
+    } | null;
+    safest?: {
+      icao: string;
+      name?: string | null;
+      lat?: number;
+      lon?: number;
+      runway_length?: number;
+      has_fuel?: boolean;
+      has_customs?: boolean;
+    } | null;
   };
   route?: Array<{
     lat: number;
@@ -148,67 +180,90 @@ function summarizeMetar(metar: Metar): string {
 function hasThunderstorm(metar: Metar): boolean {
   if (!metar || !metar.raw_text) return false;
   const rawText = metar.raw_text.toUpperCase();
-  return rawText.includes("TS") || rawText.includes("THUNDERSTORM") || rawText.includes("TEMPO");
+  return (
+    rawText.includes("TS") ||
+    rawText.includes("THUNDERSTORM") ||
+    rawText.includes("TEMPO")
+  );
 }
 
 // Function to generate thunderstorm polygon coordinates around an airport
-function generateThunderstormPolygon(lat: number, lon: number, radiusKm: number = 25): Array<[number, number]> {
+function generateThunderstormPolygon(
+  lat: number,
+  lon: number,
+  radiusKm: number = 25
+): Array<[number, number]> {
   const points: Array<[number, number]> = [];
   const numPoints = 12; // Number of points to create a circular polygon
-  
+
   for (let i = 0; i < numPoints; i++) {
     const angle = (i * 360) / numPoints;
     const radians = (angle * Math.PI) / 180;
-    
+
     // Convert km to degrees (approximate)
     const latOffset = (radiusKm / 111) * Math.cos(radians);
-    const lonOffset = (radiusKm / (111 * Math.cos(lat * Math.PI / 180))) * Math.sin(radians);
-    
+    const lonOffset =
+      (radiusKm / (111 * Math.cos((lat * Math.PI) / 180))) * Math.sin(radians);
+
     points.push([lat + latOffset, lon + lonOffset]);
   }
-  
+
   return points;
 }
 
 // Function to extract airport-specific summary from AI-generated briefing
-function getAirportSpecificSummary(airportCode: string, aiSummary: string, metar: Metar): string {
+function getAirportSpecificSummary(
+  airportCode: string,
+  aiSummary: string,
+  metar: Metar
+): string {
   if (!aiSummary) {
     return metar ? summarizeMetar(metar) : "No weather data available";
   }
 
   // Try to find airport-specific information in the AI summary
-  const lines = aiSummary.split('\n').filter(line => line.trim());
-  
+  const lines = aiSummary.split("\n").filter((line) => line.trim());
+
   for (const line of lines) {
     // Look for lines that mention the specific airport
     if (line.toLowerCase().includes(airportCode.toLowerCase())) {
       return line.trim();
     }
-    
+
     // Look for lines that mention airport names (common patterns)
     const airportNamePatterns = {
-      'VABB': ['mumbai', 'bombay'],
-      'VEBS': ['bhubaneswar', 'bhubaneshwar'],
-      'VOBL': ['bangalore', 'bengaluru', 'bangaluru'],
-      'VASU': ['surat'],
-      'VIDP': ['delhi', 'new delhi'],
-      'VECC': ['kolkata', 'calcutta'],
-      'VOMM': ['chennai', 'madras'],
-      'VAGO': ['goa'],
-      'VAPO': ['pune']
+      VABB: ["mumbai", "bombay"],
+      VEBS: ["bhubaneswar", "bhubaneshwar"],
+      VOBL: ["bangalore", "bengaluru", "bangaluru"],
+      VASU: ["surat"],
+      VIDP: ["delhi", "new delhi"],
+      VECC: ["kolkata", "calcutta"],
+      VOMM: ["chennai", "madras"],
+      VAGO: ["goa"],
+      VAPO: ["pune"],
     };
-    
-    const patterns = airportNamePatterns[airportCode as keyof typeof airportNamePatterns] || [];
+
+    const patterns =
+      airportNamePatterns[airportCode as keyof typeof airportNamePatterns] ||
+      [];
     for (const pattern of patterns) {
       if (line.toLowerCase().includes(pattern)) {
         return line.trim();
       }
     }
   }
-  
+
   // If no airport-specific line found, try to extract relevant weather info
   // Look for weather conditions that might apply to this airport
-  const weatherKeywords = ['wind', 'visibility', 'cloud', 'temperature', 'rain', 'fog', 'clear'];
+  const weatherKeywords = [
+    "wind",
+    "visibility",
+    "cloud",
+    "temperature",
+    "rain",
+    "fog",
+    "clear",
+  ];
   for (const line of lines) {
     for (const keyword of weatherKeywords) {
       if (line.toLowerCase().includes(keyword)) {
@@ -216,7 +271,7 @@ function getAirportSpecificSummary(airportCode: string, aiSummary: string, metar
       }
     }
   }
-  
+
   // Fallback to METAR summary
   return metar ? summarizeMetar(metar) : "No weather data available";
 }
@@ -301,35 +356,37 @@ function RouteMap({
           if (!info || !info.latitude_deg || !info.longitude_deg) return;
 
           const metar = metarMap[code];
-          const hoverSummary = metar
-            ? metar.raw_text
-            : "No METAR";
-          
+          const hoverSummary = metar ? metar.raw_text : "No METAR";
+
           // Extract airport-specific summary from AI-generated briefing
-          const clickSummary = getAirportSpecificSummary(code, briefing.summary_5line, metar);
+          const clickSummary = getAirportSpecificSummary(
+            code,
+            briefing.summary_5line,
+            metar
+          );
 
           // Check for thunderstorms and add red polygon if present
           if (metar && hasThunderstorm(metar)) {
             const thunderstormPolygon = generateThunderstormPolygon(
-              info.latitude_deg, 
-              info.longitude_deg, 
+              info.latitude_deg,
+              info.longitude_deg,
               25 // 25km radius
             );
-            
+
             const polygon = L.polygon(thunderstormPolygon, {
-              color: '#dc2626', // Red color
+              color: "#dc2626", // Red color
               weight: 2,
               opacity: 0.8,
-              fillColor: '#dc2626',
-              fillOpacity: 0.3
+              fillColor: "#dc2626",
+              fillOpacity: 0.3,
             });
-            
+
             polygon.bindTooltip(`⚠️ Thunderstorm Activity at ${code}`, {
               direction: "center",
               className: "thunderstorm-tooltip",
-              permanent: false
+              permanent: false,
             });
-            
+
             polygon.bindPopup(
               `
               <div style="font-family: Arial, sans-serif; max-width: 300px;">
@@ -344,17 +401,17 @@ function RouteMap({
                 className: "thunderstorm-popup",
               }
             );
-            
+
             polygon.addTo(map);
           }
 
           const marker = L.marker([info.latitude_deg, info.longitude_deg]);
 
           // Tooltip on hover (full raw METAR)
-          marker.bindTooltip(`${code}: ${hoverSummary}`, { 
+          marker.bindTooltip(`${code}: ${hoverSummary}`, {
             direction: "top",
             className: "metar-tooltip",
-            maxWidth: 400
+            maxWidth: 400,
           });
 
           // Popup on click (AI-generated summary)
@@ -379,7 +436,7 @@ function RouteMap({
         if (coords.length >= 2) {
           // Always connect the actual airport coordinates
           L.polyline(coords, { color: "#ec4899", weight: 3 }).addTo(map);
-          
+
           // Also show the detailed route if available (as a different colored line)
           const realRoute: Array<{
             lat: number;
@@ -388,9 +445,13 @@ function RouteMap({
           }> = (window as any).__briefingRoute || [];
           if (Array.isArray(realRoute) && realRoute.length >= 2) {
             const rcoords = realRoute.map((p) => [p.lat, p.lon]);
-            L.polyline(rcoords, { color: "#3b82f6", weight: 2, opacity: 0.7 }).addTo(map);
+            L.polyline(rcoords, {
+              color: "#3b82f6",
+              weight: 2,
+              opacity: 0.7,
+            }).addTo(map);
           }
-          
+
           const group = L.featureGroup(coords.map((c) => L.marker(c)));
           map.fitBounds(group.getBounds().pad(0.2));
         } else if (coords.length === 1) {
@@ -492,17 +553,17 @@ function RouteMap({
 }
 
 // Detailed Report Component - Formats AI-generated report with proper styling
-function DetailedReport({ 
-  briefing, 
-  flight: _flight, 
-  airportInfoMap: _airportInfoMap 
-}: { 
-  briefing: Briefing; 
-  flight: any; 
-  airportInfoMap: Record<string, AirportInfo> 
+function DetailedReport({
+  briefing,
+  flight: _flight,
+  airportInfoMap: _airportInfoMap,
+}: {
+  briefing: Briefing;
+  flight: any;
+  airportInfoMap: Record<string, AirportInfo>;
 }) {
   // Debug logging to see what data we're actually getting
-  console.log('DetailedReport Debug:', {
+  console.log("DetailedReport Debug:", {
     metars: briefing.metars?.length || 0,
     tafs: briefing.tafs?.length || 0,
     notams: briefing.notams?.length || 0,
@@ -510,140 +571,223 @@ function DetailedReport({
     hazards: briefing.hazards?.length || 0,
     route: briefing.route?.length || 0,
     alternates: briefing.alternates?.length || 0,
-    hasDetailedReport: !!briefing.detailed_report
+    hasDetailedReport: !!briefing.detailed_report,
   });
-  
+
   // Function to parse AI report and format it into sections
   const parseAIReport = (report: string) => {
     const sections = [];
-    const lines = report.split('\n');
-    let currentSection = { title: '', content: '', icon: Briefcase };
-    
+    const lines = report.split("\n");
+    let currentSection = { title: "", content: "", icon: Briefcase };
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      
+
       // Check for section headers
       if (line.match(/^\d+\.\s+(.+)/)) {
         // Save previous section if it exists
         if (currentSection.title) {
           sections.push({ ...currentSection });
         }
-        
+
         // Start new section
-        const title = line.replace(/^\d+\.\s+/, '');
+        const title = line.replace(/^\d+\.\s+/, "");
         currentSection = {
           title,
-          content: '',
-          icon: getIconForSection(title)
+          content: "",
+          icon: getIconForSection(title),
         };
-      } else if (line && !line.startsWith('===') && !line.startsWith('IMPORTANT:')) {
+      } else if (
+        line &&
+        !line.startsWith("===") &&
+        !line.startsWith("IMPORTANT:")
+      ) {
         // Add content to current section
         if (currentSection.content) {
-          currentSection.content += '\n' + line;
+          currentSection.content += "\n" + line;
         } else {
           currentSection.content = line;
         }
       }
     }
-    
+
     // Add the last section
     if (currentSection.title) {
       sections.push({ ...currentSection });
     }
-    
+
     return sections;
   };
-  
+
   // Function to get appropriate icon for each section
   const getIconForSection = (title: string) => {
     const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('flight overview') || lowerTitle.includes('overview')) return Briefcase;
-    if (lowerTitle.includes('departure')) return Plane;
-    if (lowerTitle.includes('enroute') || lowerTitle.includes('segment')) return MapPin;
-    if (lowerTitle.includes('destination') || lowerTitle.includes('arrival')) return Plane;
-    if (lowerTitle.includes('alternate')) return MapPin;
-    if (lowerTitle.includes('hazard') || lowerTitle.includes('risk')) return AlertTriangle;
-    if (lowerTitle.includes('operational') || lowerTitle.includes('notes')) return FileText;
+    if (
+      lowerTitle.includes("flight overview") ||
+      lowerTitle.includes("overview")
+    )
+      return Briefcase;
+    if (lowerTitle.includes("departure")) return Plane;
+    if (lowerTitle.includes("enroute") || lowerTitle.includes("segment"))
+      return MapPin;
+    if (lowerTitle.includes("destination") || lowerTitle.includes("arrival"))
+      return Plane;
+    if (lowerTitle.includes("alternate")) return MapPin;
+    if (lowerTitle.includes("hazard") || lowerTitle.includes("risk"))
+      return AlertTriangle;
+    if (lowerTitle.includes("operational") || lowerTitle.includes("notes"))
+      return FileText;
     return Briefcase;
   };
-  
+
   // Function to get color for section icon
   const getIconColor = (title: string) => {
     const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('departure')) return 'text-green-600';
-    if (lowerTitle.includes('enroute') || lowerTitle.includes('segment')) return 'text-orange-600';
-    if (lowerTitle.includes('destination') || lowerTitle.includes('arrival')) return 'text-red-600';
-    if (lowerTitle.includes('alternate')) return 'text-purple-600';
-    if (lowerTitle.includes('hazard') || lowerTitle.includes('risk')) return 'text-red-600';
-    if (lowerTitle.includes('operational') || lowerTitle.includes('notes')) return 'text-blue-600';
-    return 'text-blue-600';
+    if (lowerTitle.includes("departure")) return "text-green-600";
+    if (lowerTitle.includes("enroute") || lowerTitle.includes("segment"))
+      return "text-orange-600";
+    if (lowerTitle.includes("destination") || lowerTitle.includes("arrival"))
+      return "text-red-600";
+    if (lowerTitle.includes("alternate")) return "text-purple-600";
+    if (lowerTitle.includes("hazard") || lowerTitle.includes("risk"))
+      return "text-red-600";
+    if (lowerTitle.includes("operational") || lowerTitle.includes("notes"))
+      return "text-blue-600";
+    return "text-blue-600";
   };
-  
+
   // Function to highlight critical words in text
   const highlightCriticalWords = (text: string) => {
     const criticalWords = [
-      'risk', 'thunderstorm', 'turbulence', 'icing', 'fog', 'low visibility',
-      'severe', 'critical', 'dangerous', 'hazard', 'warning', 'alert',
-      'strong wind', 'gust', 'crosswind', 'wind shear', 'microburst',
-      'shower', 'rain', 'precipitation', 'storm', 'cyclone', 'hurricane',
-      'ceiling', 'cloud', 'overcast', 'broken', 'scattered',
-      'notam', 'restriction', 'prohibited', 'closed', 'unserviceable',
-      'emergency', 'mayday', 'pan-pan', 'distress', 'incident',
-      'fire', 'smoke', 'volcanic ash', 'dust storm', 'sandstorm',
-      'freezing', 'frost', 'snow', 'sleet', 'hail', 'ice',
-      'runway', 'taxiway', 'apron', 'ramp', 'gate', 'terminal'
+      "risk",
+      "thunderstorm",
+      "turbulence",
+      "icing",
+      "fog",
+      "low visibility",
+      "severe",
+      "critical",
+      "dangerous",
+      "hazard",
+      "warning",
+      "alert",
+      "strong wind",
+      "gust",
+      "crosswind",
+      "wind shear",
+      "microburst",
+      "shower",
+      "rain",
+      "precipitation",
+      "storm",
+      "cyclone",
+      "hurricane",
+      "ceiling",
+      "cloud",
+      "overcast",
+      "broken",
+      "scattered",
+      "notam",
+      "restriction",
+      "prohibited",
+      "closed",
+      "unserviceable",
+      "emergency",
+      "mayday",
+      "pan-pan",
+      "distress",
+      "incident",
+      "fire",
+      "smoke",
+      "volcanic ash",
+      "dust storm",
+      "sandstorm",
+      "freezing",
+      "frost",
+      "snow",
+      "sleet",
+      "hail",
+      "ice",
+      "runway",
+      "taxiway",
+      "apron",
+      "ramp",
+      "gate",
+      "terminal",
     ];
-    
+
     let highlightedText = text;
-    criticalWords.forEach(word => {
-      const regex = new RegExp(`\\b${word}\\b`, 'gi');
-      highlightedText = highlightedText.replace(regex, `<strong class="font-semibold text-gray-900">${word}</strong>`);
+    criticalWords.forEach((word) => {
+      const regex = new RegExp(`\\b${word}\\b`, "gi");
+      highlightedText = highlightedText.replace(
+        regex,
+        `<strong class="font-semibold text-gray-900">${word}</strong>`
+      );
     });
-    
+
     return highlightedText;
   };
 
   // Function to format section content to match Brief Summary style
   const formatSectionContent = (content: string) => {
-    const lines = content.split('\n').filter(line => line.trim());
+    const lines = content.split("\n").filter((line) => line.trim());
     const formattedLines = [];
-    
+
     for (const line of lines) {
       const trimmedLine = line.trim();
-      
+
       // Remove ** formatting
-      const cleanLine = trimmedLine.replace(/\*\*/g, '');
-      
-      if (cleanLine.startsWith('- ')) {
+      const cleanLine = trimmedLine.replace(/\*\*/g, "");
+
+      if (cleanLine.startsWith("- ")) {
         // Bullet point matching Brief Summary style with critical word highlighting
         const bulletText = cleanLine.substring(2);
         const highlightedText = highlightCriticalWords(bulletText);
-        
+
         formattedLines.push(
-          <div key={formattedLines.length} className="text-sm text-gray-700 py-1">
-            <span className="text-gray-500 mr-2">•</span> 
+          <div
+            key={formattedLines.length}
+            className="text-sm text-gray-700 py-1"
+          >
+            <span className="text-gray-500 mr-2">•</span>
             <span dangerouslySetInnerHTML={{ __html: highlightedText }} />
           </div>
         );
       } else if (cleanLine.match(/^[A-Z][^:]*:$/)) {
         // Bold header matching Brief Summary style
         formattedLines.push(
-          <div key={formattedLines.length} className="font-semibold text-gray-800 mt-3 mb-2 text-sm">
+          <div
+            key={formattedLines.length}
+            className="font-semibold text-gray-800 mt-3 mb-2 text-sm"
+          >
             {cleanLine}
           </div>
         );
       } else if (cleanLine.match(/^(LOW|MODERATE|HIGH)\s+RISK/i)) {
         // Risk level badge
-        const riskLevel = cleanLine.match(/^(LOW|MODERATE|HIGH)/i)?.[1]?.toUpperCase() || 'LOW';
+        const riskLevel =
+          cleanLine.match(/^(LOW|MODERATE|HIGH)/i)?.[1]?.toUpperCase() || "LOW";
         formattedLines.push(
-          <div key={formattedLines.length} className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-2 ${getRiskBadgeStyling(riskLevel)}`}>
+          <div
+            key={formattedLines.length}
+            className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-2 ${getRiskBadgeStyling(
+              riskLevel
+            )}`}
+          >
             {cleanLine}
           </div>
         );
-      } else if (cleanLine.match(/^(Raw|Decoded|Hazards|Forecast|Analysis|Summary|Actions|Notes|Planning|Sources|Updated|Advisory)/i)) {
+      } else if (
+        cleanLine.match(
+          /^(Raw|Decoded|Hazards|Forecast|Analysis|Summary|Actions|Notes|Planning|Sources|Updated|Advisory)/i
+        )
+      ) {
         // Subsection headers
         formattedLines.push(
-          <div key={formattedLines.length} className="font-medium text-gray-800 mt-2 mb-1 text-sm">
+          <div
+            key={formattedLines.length}
+            className="font-medium text-gray-800 mt-2 mb-1 text-sm"
+          >
             {cleanLine}
           </div>
         );
@@ -651,91 +795,126 @@ function DetailedReport({
         // Regular text matching Brief Summary style with critical word highlighting
         const highlightedText = highlightCriticalWords(cleanLine);
         formattedLines.push(
-          <div key={formattedLines.length} className="text-sm text-gray-700 py-1">
+          <div
+            key={formattedLines.length}
+            className="text-sm text-gray-700 py-1"
+          >
             <span dangerouslySetInnerHTML={{ __html: highlightedText }} />
           </div>
         );
       }
     }
-    
+
     return formattedLines;
   };
-  
+
   // Function to detect risk level from section content
-  const getRiskLevel = (content: string): 'LOW' | 'MODERATE' | 'HIGH' | 'NONE' => {
+  const getRiskLevel = (
+    content: string
+  ): "LOW" | "MODERATE" | "HIGH" | "NONE" => {
     const lowerContent = content.toLowerCase();
-    
+
     // High risk indicators
-    if (lowerContent.includes('critical') || lowerContent.includes('severe') || 
-        lowerContent.includes('thunderstorm') || lowerContent.includes('tornado') ||
-        lowerContent.includes('icing') || lowerContent.includes('turbulence') ||
-        lowerContent.includes('low visibility') || lowerContent.includes('fog') ||
-        lowerContent.includes('strong wind') || lowerContent.includes('gust') ||
-        lowerContent.includes('high risk')) {
-      return 'HIGH';
+    if (
+      lowerContent.includes("critical") ||
+      lowerContent.includes("severe") ||
+      lowerContent.includes("thunderstorm") ||
+      lowerContent.includes("tornado") ||
+      lowerContent.includes("icing") ||
+      lowerContent.includes("turbulence") ||
+      lowerContent.includes("low visibility") ||
+      lowerContent.includes("fog") ||
+      lowerContent.includes("strong wind") ||
+      lowerContent.includes("gust") ||
+      lowerContent.includes("high risk")
+    ) {
+      return "HIGH";
     }
-    
+
     // Moderate risk indicators
-    if (lowerContent.includes('moderate') || lowerContent.includes('shower') ||
-        lowerContent.includes('rain') || lowerContent.includes('cloud') ||
-        lowerContent.includes('ceiling') || lowerContent.includes('crosswind') ||
-        lowerContent.includes('notam') || lowerContent.includes('restriction') ||
-        lowerContent.includes('moderate risk')) {
-      return 'MODERATE';
+    if (
+      lowerContent.includes("moderate") ||
+      lowerContent.includes("shower") ||
+      lowerContent.includes("rain") ||
+      lowerContent.includes("cloud") ||
+      lowerContent.includes("ceiling") ||
+      lowerContent.includes("crosswind") ||
+      lowerContent.includes("notam") ||
+      lowerContent.includes("restriction") ||
+      lowerContent.includes("moderate risk")
+    ) {
+      return "MODERATE";
     }
-    
+
     // Low risk indicators
-    if (lowerContent.includes('clear') || lowerContent.includes('good') ||
-        lowerContent.includes('favorable') || lowerContent.includes('no significant') ||
-        lowerContent.includes('vfr') || lowerContent.includes('calm') ||
-        lowerContent.includes('low risk')) {
-      return 'LOW';
+    if (
+      lowerContent.includes("clear") ||
+      lowerContent.includes("good") ||
+      lowerContent.includes("favorable") ||
+      lowerContent.includes("no significant") ||
+      lowerContent.includes("vfr") ||
+      lowerContent.includes("calm") ||
+      lowerContent.includes("low risk")
+    ) {
+      return "LOW";
     }
-    
-    return 'NONE';
+
+    return "NONE";
   };
-  
+
   // Function to get badge styling for risk levels
   const getRiskBadgeStyling = (riskLevel: string) => {
     switch (riskLevel) {
-      case 'HIGH':
-        return 'bg-red-100 text-red-800 border border-red-300';
-      case 'MODERATE':
-        return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
-      case 'LOW':
-        return 'bg-green-100 text-green-800 border border-green-300';
+      case "HIGH":
+        return "bg-red-100 text-red-800 border border-red-300";
+      case "MODERATE":
+        return "bg-yellow-100 text-yellow-800 border border-yellow-300";
+      case "LOW":
+        return "bg-green-100 text-green-800 border border-green-300";
       default:
-        return 'bg-gray-100 text-gray-800 border border-gray-300';
+        return "bg-gray-100 text-gray-800 border border-gray-300";
     }
   };
-  
-  
+
   // If we have an AI-generated detailed report, parse and format it
   if (briefing.detailed_report) {
     const sections = parseAIReport(briefing.detailed_report);
-    
+
     return (
       <div className="space-y-6">
         {sections.map((section, index) => {
           const sectionRiskLevel = getRiskLevel(section.content);
-          const isHazardSection = section.title.toLowerCase().includes('hazard') || section.title.toLowerCase().includes('risk');
-          
+          const isHazardSection =
+            section.title.toLowerCase().includes("hazard") ||
+            section.title.toLowerCase().includes("risk");
+
           return (
-            <Card key={index} className="bg-white/80 backdrop-blur border-0 shadow-lg">
+            <Card
+              key={index}
+              className="bg-white/80 backdrop-blur border-0 shadow-lg"
+            >
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <section.icon className={`w-5 h-5 ${getIconColor(section.title)}`} />
+                  <section.icon
+                    className={`w-5 h-5 ${getIconColor(section.title)}`}
+                  />
                   {section.title}
                   {/* Warning indicator for hazard sections with risk */}
-                  {isHazardSection && (sectionRiskLevel === 'HIGH' || sectionRiskLevel === 'MODERATE') && (
-                    <div className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold ${
-                      sectionRiskLevel === 'HIGH' 
-                        ? 'bg-red-100 text-red-800 border border-red-300' 
-                        : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
-                    }`}>
-                      {sectionRiskLevel === 'HIGH' ? '⚠️ HIGH RISK' : '⚠️ MODERATE RISK'}
-                    </div>
-                  )}
+                  {isHazardSection &&
+                    (sectionRiskLevel === "HIGH" ||
+                      sectionRiskLevel === "MODERATE") && (
+                      <div
+                        className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold ${
+                          sectionRiskLevel === "HIGH"
+                            ? "bg-red-100 text-red-800 border border-red-300"
+                            : "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                        }`}
+                      >
+                        {sectionRiskLevel === "HIGH"
+                          ? "⚠️ HIGH RISK"
+                          : "⚠️ MODERATE RISK"}
+                      </div>
+                    )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -751,7 +930,7 @@ function DetailedReport({
       </div>
     );
   }
-  
+
   // Fallback to basic report if AI report is not available
   return (
     <div className="space-y-6">
@@ -765,14 +944,18 @@ function DetailedReport({
         <CardContent>
           <div className="bg-yellow-50 rounded-lg p-4 text-gray-800 leading-relaxed">
             <div className="text-sm">
-              <p className="mb-2">⚠️ AI-generated detailed report not available.</p>
+              <p className="mb-2">
+                ⚠️ AI-generated detailed report not available.
+              </p>
               <p className="mb-2">This could be due to:</p>
               <ul className="list-disc pl-5 space-y-1">
                 <li>GEMINI_API_KEY not configured</li>
                 <li>API request timeout</li>
                 <li>Network connectivity issues</li>
               </ul>
-              <p className="mt-2">Please check the backend logs for more details.</p>
+              <p className="mt-2">
+                Please check the backend logs for more details.
+              </p>
             </div>
           </div>
         </CardContent>
@@ -786,7 +969,7 @@ export default function FlightDetail() {
   const [search] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'brief' | 'detailed'>('brief');
+  const [activeTab, setActiveTab] = useState<"brief" | "detailed">("brief");
 
   const [loadingFlight, setLoadingFlight] = useState(true);
   const [flight, setFlight] = useState<any>(null);
@@ -1011,31 +1194,31 @@ export default function FlightDetail() {
             {/* Tab Navigation */}
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setActiveTab('brief')}
+                onClick={() => setActiveTab("brief")}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'brief'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
+                  activeTab === "brief"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
                 }`}
               >
                 <FileText className="w-4 h-4" />
                 Brief Summary
               </button>
               <button
-                onClick={() => setActiveTab('detailed')}
+                onClick={() => setActiveTab("detailed")}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'detailed'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
+                  activeTab === "detailed"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
                 Detailed Report
               </button>
             </div>
-            
+
             {/* Tab Content */}
-            {activeTab === 'brief' && (
+            {activeTab === "brief" && (
               <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg">Flight Summary</CardTitle>
@@ -1066,12 +1249,12 @@ export default function FlightDetail() {
                 </CardContent>
               </Card>
             )}
-            
-            {activeTab === 'detailed' && (
-              <DetailedReport 
-                briefing={briefing} 
-                flight={flight} 
-                airportInfoMap={airportInfoMap} 
+
+            {activeTab === "detailed" && (
+              <DetailedReport
+                briefing={briefing}
+                flight={flight}
+                airportInfoMap={airportInfoMap}
               />
             )}
 
@@ -1239,4 +1422,3 @@ export default function FlightDetail() {
     </div>
   );
 }
-
