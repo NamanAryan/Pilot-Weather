@@ -102,7 +102,11 @@ def analyze_route(req: RouteRequest):
         
         print("🗺 Processing route...")
         try:
-            route_points = fetch_route(req.airports[0], req.airports[-1])
+            # Create route connecting all airports in sequence
+            route_points = []
+            for i in range(len(req.airports) - 1):
+                segment = fetch_route(req.airports[i], req.airports[i + 1])
+                route_points.extend(segment)
             hazards = map_hazards(route_points, pireps)
         except Exception as e:
             print(f"❌ Route error: {e}")

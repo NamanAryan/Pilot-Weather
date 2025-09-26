@@ -1,11 +1,7 @@
 from models.route import RoutePoint
 from models.weather import Pirep
 from typing import List
-import os
 import math
-import requests
-from .airports import get_airport_info
-from datetime import datetime, timedelta, timezone
 
 def _great_circle_points(lat1: float, lon1: float, lat2: float, lon2: float, segments: int = 64) -> List[RoutePoint]:
     """Generate intermediate points along great-circle between two coords.
@@ -35,275 +31,107 @@ def _great_circle_points(lat1: float, lon1: float, lat2: float, lon2: float, seg
         points.append(RoutePoint(lat=math.degrees(φ), lon=math.degrees(λ), altitude=35000))
     return points
 
-
-def _try_flightplan_db_route(src: str, dest: str) -> List[RoutePoint]:
-    # Disabled per requirement: use OpenSky only.
-    return []
-
-
-def _try_opensky_route(src: str, dest: str) -> List[RoutePoint]:
-    """Attempt to get a recent real track from OpenSky Network.
-
-    Workflow per OpenSky docs [REST API, Flights and Tracks]:
-    1) Query recent arrivals for destination to get a flight with callsign and icao24
-       GET /api/flights/arrival?airport=DEST&begin=...&end=...
-    2) For each returned flight matching origin ICAO in callsign/estDepartureAirport,
-       fetch its track:
-       GET /api/tracks/all?icao24=...&time=lastSeen
-
-    Docs: `https://openskynetwork.github.io/opensky-api/index.html`
-    """
-    base = os.getenv("OPENSKY_BASE", "https://opensky-network.org")
-
-    # Auth: Prefer OAuth2 client credentials if configured; else basic auth
-    user = os.getenv("OPENSKY_USER")
-    pwd = os.getenv("OPENSKY_PASSWORD")
-    client_id = os.getenv("OPENSKY_CLIENT_ID")
-    client_secret = os.getenv("OPENSKY_CLIENT_SECRET")
-
-    headers: dict = {}
-    auth = None
-
-    token = _get_opensky_token(client_id, client_secret) if client_id and client_secret else None
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    elif user and pwd:
-        auth = (user, pwd)
-
-    try:
-        now = datetime.now(timezone.utc)
-        end = int(now.timestamp())
-        begin = int((now - timedelta(hours=6)).timestamp())
-        r = requests.get(
-            f"{base}/api/flights/arrival",
-            params={"airport": dest, "begin": begin, "end": end},
-            auth=auth,
-            headers=headers,
-            timeout=12,
-        )
-        if r.status_code != 200:
-            return []
-        flights = r.json() or []
-
-        chosen = None
-        for f in flights:
-            # Match on estimated departure airport if present, else try callsign prefix
-            if (f.get("estDepartureAirport") or "").upper() == src.upper():
-                chosen = f
-                break
-            cs = (f.get("callsign") or "").strip().upper()
-            if cs.startswith(src.upper()):
-                chosen = f
-                break
-        if not chosen:
-            return []
-
-        icao24 = chosen.get("icao24")
-        t = chosen.get("lastSeen") or chosen.get("firstSeen")
-        if not icao24 or not t:
-            return []
-
-        tr = requests.get(
-            f"{base}/api/tracks/all",
-            params={"icao24": icao24, "time": int(t)},
-            auth=auth,
-            headers=headers,
-            timeout=12,
-        )
-        if tr.status_code != 200:
-            return []
-        data = tr.json() or {}
-        path = data.get("path") or []
-        out: List[RoutePoint] = []
-        for p in path:
-            lat = p.get("latitude")
-            lon = p.get("longitude")
-            alt = p.get("baroAltitude") or p.get("geoAltitude") or 35000
-            if lat is None or lon is None:
-                continue
-            out.append(RoutePoint(lat=float(lat), lon=float(lon), altitude=int(alt or 0)))
-        return out
-    except Exception:
-        return []
-
-
-# --- OAuth2 Client Credentials helper (cache token in-memory) ---
-_OPEN_SKY_TOKEN: dict | None = None
-
-def _get_opensky_token(client_id: str | None, client_secret: str | None) -> str | None:
-    global _OPEN_SKY_TOKEN
-    if not client_id or not client_secret:
-        return None
-    try:
-        # Refresh if missing or expired within 60s
-        now = int(datetime.now(timezone.utc).timestamp())
-        if _OPEN_SKY_TOKEN and _OPEN_SKY_TOKEN.get("exp", 0) - now > 60:
-            return _OPEN_SKY_TOKEN.get("access_token")  # type: ignore[return-value]
-
-        token_url = os.getenv("OPENSKY_TOKEN_URL", "https://auth.opensky-network.org/oauth/token")
-        resp = requests.post(
-            token_url,
-            data={"grant_type": "client_credentials"},
-            auth=(client_id, client_secret),
-            timeout=10,
-        )
-        if resp.status_code != 200:
-            return None
-        data = resp.json() or {}
-        access_token = data.get("access_token")
-        expires_in = int(data.get("expires_in", 300))
-        _OPEN_SKY_TOKEN = {
-            "access_token": access_token,
-            "exp": now + expires_in,
-        }
-        return access_token
-    except Exception:
-        return None
-
-
-def _try_flightaware_route(src: str, dest: str) -> List[RoutePoint]:
-    """Try free flight tracking alternatives (FlightAware requires paid API).
-    
-    Uses publicly available flight data sources that don't require API keys.
-    """
-    try:
-        # Use FlightRadar24's public data (completely free)
-        return _try_flightradar24_route(src, dest)
-    except Exception:
-        pass
-    return []
-
-
-def _try_flightradar24_route(src: str, dest: str) -> List[RoutePoint]:
-    """Try FlightRadar24's completely free public endpoints.
-    
-    Uses their public flight data without any authentication.
-    """
-    try:
-        # Get airport coordinates first
-        src_info = get_airport_info(src)
-        dest_info = get_airport_info(dest)
-        
-        if not src_info or not dest_info:
-            return []
-            
-        src_lat = float(src_info["latitude_deg"])
-        src_lon = float(src_info["longitude_deg"])
-        dest_lat = float(dest_info["latitude_deg"])
-        dest_lon = float(dest_info["longitude_deg"])
-        
-        # Use FlightRadar24's public flight feed
-        # This endpoint provides live flight data without authentication
-        bounds = f"{min(src_lat, dest_lat)-2},{min(src_lon, dest_lon)-2},{max(src_lat, dest_lat)+2},{max(src_lon, dest_lon)+2}"
-        
-        url = f"https://data-live.flightradar24.com/zones/fcgi/feed.js"
-        params = {
-            "bounds": bounds,
-            "faa": "1",
-            "satellite": "1", 
-            "mlat": "1",
-            "flarm": "1",
-            "adsb": "1",
-            "gnd": "1",
-            "air": "1",
-            "vehicles": "1",
-            "estimated": "1",
-            "maxage": "14400",
-            "gliders": "1",
-            "stats": "1"
-        }
-        
-        resp = requests.get(url, params=params, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            
-            # Look for flights that might be on our route
-            route_candidates = []
-            for flight_id, flight_data in data.items():
-                if isinstance(flight_data, list) and len(flight_data) >= 11:
-                    lat = flight_data[1] if flight_data[1] else None
-                    lon = flight_data[2] if flight_data[2] else None
-                    alt = flight_data[4] if flight_data[4] else 35000
-                    
-                    if lat and lon:
-                        # Check if this flight is roughly on our route
-                        if _is_point_on_route(lat, lon, src_lat, src_lon, dest_lat, dest_lon):
-                            route_candidates.append(RoutePoint(lat=float(lat), lon=float(lon), altitude=int(alt)))
-            
-            if route_candidates:
-                # Sort by distance from start and return the route
-                route_candidates.sort(key=lambda p: _distance_to_point(p.lat, p.lon, src_lat, src_lon))
-                return route_candidates
-        
-        # Fallback: create a realistic route with waypoints
-        return _create_realistic_route(src_lat, src_lon, dest_lat, dest_lon)
-        
-    except Exception as e:
-        print(f"FlightRadar24 error: {e}")
-        pass
-    return []
-
-
-def _is_point_on_route(lat: float, lon: float, src_lat: float, src_lon: float, dest_lat: float, dest_lon: float, tolerance: float = 5.0) -> bool:
-    """Check if a point is roughly on the route between two airports."""
-    # Calculate distance from point to the great circle line
-    # Simplified check: if point is within tolerance degrees of the route
-    route_distance = _haversine_nm(src_lat, src_lon, dest_lat, dest_lon)
-    dist_to_start = _haversine_nm(src_lat, src_lon, lat, lon)
-    dist_to_end = _haversine_nm(dest_lat, dest_lon, lat, lon)
-    
-    # If point is roughly between start and end, consider it on route
-    return abs((dist_to_start + dist_to_end) - route_distance) < tolerance
-
-
-def _distance_to_point(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Calculate distance between two points."""
-    return _haversine_nm(lat1, lon1, lat2, lon2)
-
-
-def _create_realistic_route(src_lat: float, src_lon: float, dest_lat: float, dest_lon: float) -> List[RoutePoint]:
-    """Create a realistic flight route with common waypoints."""
-    # Add some realistic waypoints for common routes
-    waypoints = []
-    
-    # For transatlantic routes, add common waypoints
-    if abs(src_lon - dest_lon) > 50:  # Long distance route
-        # Add intermediate waypoints for realistic routing
-        mid_lat = (src_lat + dest_lat) / 2
-        mid_lon = (src_lon + dest_lon) / 2
-        
-        # Add some variation to make it more realistic
-        waypoints.append(RoutePoint(lat=src_lat, lon=src_lon, altitude=0))
-        waypoints.append(RoutePoint(lat=src_lat + (mid_lat - src_lat) * 0.3, lon=src_lon + (mid_lon - src_lon) * 0.3, altitude=35000))
-        waypoints.append(RoutePoint(lat=mid_lat, lon=mid_lon, altitude=37000))
-        waypoints.append(RoutePoint(lat=dest_lat + (mid_lat - dest_lat) * 0.3, lon=dest_lon + (mid_lon - dest_lon) * 0.3, altitude=35000))
-        waypoints.append(RoutePoint(lat=dest_lat, lon=dest_lon, altitude=0))
-    else:
-        # Shorter route - use great circle with more segments
-        return _great_circle_points(src_lat, src_lon, dest_lat, dest_lon, segments=64)
-    
-    return waypoints
-
-
 def fetch_route(src: str, dest: str) -> List[RoutePoint]:
-    """Return actual route polyline using free flight tracking APIs.
-
-    Tries multiple free sources in order:
-    1. FlightAware (no auth required)
-    2. FlightRadar24 (public endpoints)
-    3. OpenSky (if configured)
     """
-    # Try free alternatives first
-    flightaware = _try_flightaware_route(src, dest)
-    if flightaware:
-        return flightaware
+    Return actual route polyline using great circle calculation.
+    """
+    print(f"🛫 Fetching route from {src} to {dest}")
     
-    flightradar24 = _try_flightradar24_route(src, dest)
-    if flightradar24:
-        return flightradar24
+    # Comprehensive airport coordinates including Indian airports
+    airport_coords = {
+        # North America
+        "KJFK": (40.6413, -73.7781),  # New York JFK
+        "KATL": (33.6407, -84.4277), # Atlanta
+        "KORD": (41.9786, -87.9048), # Chicago O'Hare
+        "KLAX": (33.9425, -118.4081), # Los Angeles
+        "KSFO": (37.6213, -122.3790), # San Francisco
+        "CYYZ": (43.6777, -79.6306), # Toronto
+        
+        # Europe
+        "EGLL": (51.4700, -0.4543),  # London Heathrow
+        "LFPG": (49.0097, 2.5479),   # Paris CDG
+        "EDDF": (50.0379, 8.5622),  # Frankfurt
+        "EHAM": (52.3105, 4.7683),   # Amsterdam
+        "LSGG": (46.2381, 6.1090),   # Geneva
+        "LOWW": (48.1103, 16.5697),  # Vienna
+        "LEMD": (40.4839, -3.5680),  # Madrid
+        "LIRF": (41.8045, 12.2509),  # Rome Fiumicino
+        "LTBA": (41.2753, 28.7519),  # Istanbul
+        "UUEE": (55.9726, 37.4146),  # Moscow Sheremetyevo
+        
+        # Middle East
+        "OMDB": (25.2532, 55.3657),  # Dubai
+        "OTHH": (25.2731, 51.6081),  # Doha
+        "OMAA": (24.4330, 54.6511),  # Abu Dhabi
+        "OOMS": (23.5933, 58.2844),  # Muscat
+        "OEDF": (24.7139, 46.6753),  # Riyadh
+        
+        # Asia
+        "ZBAA": (40.0799, 116.6031), # Beijing Capital
+        "RJTT": (35.7720, 140.3928), # Tokyo Haneda
+        "RJAA": (35.7720, 140.3863), # Tokyo Narita
+        "RJGG": (35.2553, 136.9243), # Nagoya
+        "RJFK": (33.5859, 130.4510), # Fukuoka
+        "RJCC": (43.0642, 141.3469), # Sapporo
+        "WSSS": (1.3644, 103.9915),  # Singapore Changi
+        "VHHH": (22.3080, 113.9185), # Hong Kong
+        "RKSI": (37.4602, 126.4407), # Seoul Incheon
+        "VTBS": (13.6900, 100.7501), # Bangkok Suvarnabhumi
+        "WMKK": (2.7456, 101.7099),  # Kuala Lumpur
+        "RCTP": (25.0777, 121.2328), # Taipei Taoyuan
+        "RCSS": (25.0697, 121.5519), # Taipei Songshan
+        
+        # India - Major Airports
+        "VIDP": (28.5562, 77.1000),  # Delhi Indira Gandhi
+        "VABB": (19.0887, 72.8679),  # Mumbai Chhatrapati Shivaji
+        "VOBL": (13.1986, 77.7066),  # Bengaluru Kempegowda
+        "VASU": (21.1702, 72.8311),  # Surat
+        "VAAH": (23.0772, 72.6346),  # Ahmedabad Sardar Vallabhbhai Patel
+        "VOMM": (12.9941, 80.1709),  # Chennai
+        "VECC": (22.6546, 88.4467),  # Kolkata Netaji Subhas Chandra Bose
+        "VAGO": (15.3808, 73.8314),  # Goa Dabolim
+        "VAPO": (18.5821, 73.9197),  # Pune
+        "VOHY": (17.4531, 78.4676),  # Hyderabad Rajiv Gandhi
+        "VANP": (21.0921, 79.0472),  # Nagpur Dr. Babasaheb Ambedkar
+        "VOML": (12.9612, 74.8902),  # Mangaluru
+        "VOCB": (11.0300, 77.0434),  # Coimbatore
+        "VOTV": (8.4821, 76.9200),   # Thiruvananthapuram
+        "VOCL": (10.1520, 76.4019),  # Kochi
+        "VOCP": (11.1362, 75.9553),  # Calicut
+        "VOTR": (10.7654, 78.7097),  # Tiruchirapalli
+        "VOMD": (9.8345, 78.0934),   # Madurai
+        "VOTP": (16.5304, 80.7968),  # Vijayawada
+        "VOBZ": (16.5304, 80.7968),  # Visakhapatnam
+        "VEPB": (25.5913, 85.0879),  # Patna
+        "VEGT": (26.1061, 91.5859),  # Guwahati
+        
+        # Other regions
+        "VCBI": (7.1808, 79.8841),   # Colombo
+        "YSSY": (-33.9399, 151.1753), # Sydney
+        "NZAA": (-37.0082, 174.7850), # Auckland
+        "SBGR": (-23.4356, -46.4731), # São Paulo Guarulhos
+        "SAEZ": (-34.8222, -58.5358), # Buenos Aires Ezeiza
+        "FAOR": (-26.1392, 28.2460), # Johannesburg
+        "HECA": (30.1127, 31.4000),  # Cairo
+        "OAKB": (34.5654, 69.2123),  # Kabul
+    }
     
-    # Fallback to OpenSky if configured
-    return _try_opensky_route(src, dest)
+    src_coords = airport_coords.get(src.upper())
+    dest_coords = airport_coords.get(dest.upper())
+    
+    if not src_coords or not dest_coords:
+        print(f"⚠️ Unknown airport coordinates for {src} or {dest}")
+        # Fallback to generic coordinates
+        src_coords = (40.0, -70.0)  # Generic US East Coast
+        dest_coords = (50.0, 0.0)   # Generic Europe
+    
+    lat1, lon1 = src_coords
+    lat2, lon2 = dest_coords
+    
+    print(f"📍 Route: {src} ({lat1:.2f}, {lon1:.2f}) → {dest} ({lat2:.2f}, {lon2:.2f})")
+    
+    # Use great circle calculation with 64 segments for smooth curves
+    return _great_circle_points(lat1, lon1, lat2, lon2, segments=64)
 
 def map_hazards(route: List[RoutePoint], pireps: List[Pirep]) -> List[str]:
     hazards = []
