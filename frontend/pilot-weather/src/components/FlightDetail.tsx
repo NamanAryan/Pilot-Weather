@@ -814,7 +814,27 @@ function DetailedReport({
   ): "LOW" | "MODERATE" | "HIGH" | "NONE" => {
     const lowerContent = content.toLowerCase();
 
-    // High risk indicators
+    // First check for explicit risk level mentions (highest priority)
+    if (
+      lowerContent.includes("high risk") ||
+      lowerContent.includes("**high risk**")
+    ) {
+      return "HIGH";
+    }
+    if (
+      lowerContent.includes("moderate risk") ||
+      lowerContent.includes("**moderate risk**")
+    ) {
+      return "MODERATE";
+    }
+    if (
+      lowerContent.includes("low risk") ||
+      lowerContent.includes("**low risk**")
+    ) {
+      return "LOW";
+    }
+
+    // High risk indicators (only if no explicit risk level mentioned)
     if (
       lowerContent.includes("critical") ||
       lowerContent.includes("severe") ||
@@ -825,36 +845,32 @@ function DetailedReport({
       lowerContent.includes("low visibility") ||
       lowerContent.includes("fog") ||
       lowerContent.includes("strong wind") ||
-      lowerContent.includes("gust") ||
-      lowerContent.includes("high risk")
+      lowerContent.includes("gust")
     ) {
       return "HIGH";
     }
 
-    // Moderate risk indicators
+    // Moderate risk indicators (only if no explicit risk level mentioned)
     if (
-      lowerContent.includes("moderate") ||
       lowerContent.includes("shower") ||
       lowerContent.includes("rain") ||
       lowerContent.includes("cloud") ||
       lowerContent.includes("ceiling") ||
       lowerContent.includes("crosswind") ||
       lowerContent.includes("notam") ||
-      lowerContent.includes("restriction") ||
-      lowerContent.includes("moderate risk")
+      lowerContent.includes("restriction")
     ) {
       return "MODERATE";
     }
 
-    // Low risk indicators
+    // Low risk indicators (only if no explicit risk level mentioned)
     if (
       lowerContent.includes("clear") ||
       lowerContent.includes("good") ||
       lowerContent.includes("favorable") ||
       lowerContent.includes("no significant") ||
       lowerContent.includes("vfr") ||
-      lowerContent.includes("calm") ||
-      lowerContent.includes("low risk")
+      lowerContent.includes("calm")
     ) {
       return "LOW";
     }
@@ -1298,121 +1314,6 @@ export default function FlightDetail() {
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {briefing.alternates && briefing.alternates.length > 0 && (
-              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <MapPin className="w-5 h-5 text-green-600" /> Alternate
-                    Airports
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {"alternate_categories_single" in briefing &&
-                  (briefing as any).alternate_categories_single ? (
-                    <div className="grid md:grid-cols-3 gap-4">
-                      {[
-                        {
-                          key: "best_fuel_efficiency",
-                          label: "Best Fuel Efficiency",
-                        },
-                        { key: "least_deviation", label: "Least Deviation" },
-                        { key: "safest", label: "Safest for Emergencies" },
-                      ].map((cat) => {
-                        const a = (briefing as any).alternate_categories_single[
-                          cat.key
-                        ];
-                        const colorMap: Record<
-                          string,
-                          {
-                            bg: string;
-                            icon: string;
-                            code: string;
-                            name: string;
-                          }
-                        > = {
-                          best_fuel_efficiency: {
-                            bg: "bg-yellow-50",
-                            icon: "text-yellow-600",
-                            code: "text-yellow-800",
-                            name: "text-yellow-700",
-                          },
-                          least_deviation: {
-                            bg: "bg-green-100",
-                            icon: "text-green-800",
-                            code: "text-green-900",
-                            name: "text-green-800",
-                          },
-                          safest: {
-                            bg: "bg-red-50",
-                            icon: "text-red-600",
-                            code: "text-red-800",
-                            name: "text-red-700",
-                          },
-                        };
-                        const styles = colorMap[cat.key] ?? {
-                          bg: "bg-green-50",
-                          icon: "text-green-600",
-                          code: "text-green-800",
-                          name: "text-green-700",
-                        };
-                        return (
-                          <div key={cat.key}>
-                            <h4 className="font-semibold text-gray-800 mb-2">
-                              {cat.label}
-                            </h4>
-                            {a ? (
-                              <div
-                                className={`flex items-center gap-2 p-3 ${styles.bg} rounded-lg`}
-                              >
-                                <MapPin
-                                  className={`w-4 h-4 ${styles.icon} flex-shrink-0`}
-                                />
-                                <div>
-                                  <span
-                                    className={`font-semibold ${styles.code}`}
-                                  >
-                                    {a.icao}
-                                  </span>
-                                  <span
-                                    className={`text-sm ml-2 ${styles.name}`}
-                                  >
-                                    {a.name}
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-sm text-gray-500">
-                                No suggestion
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {briefing.alternates.map((a, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
-                        >
-                          <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                          <div>
-                            <span className="font-semibold text-green-800">
-                              {a.icao}
-                            </span>
-                            <span className="text-sm text-green-700 ml-2">
-                              {a.name}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}

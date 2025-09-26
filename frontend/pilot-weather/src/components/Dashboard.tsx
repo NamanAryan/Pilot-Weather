@@ -56,9 +56,13 @@ interface FlightRow {
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [route, setRoute] = useState("");
   const [briefingLoading, setBriefingLoading] = useState(false);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
+
+  // Search flight state (separate from Add Flight)
+  const [searchDeparture, setSearchDeparture] = useState("");
+  const [searchArrival, setSearchArrival] = useState("");
+  const [searchIntermediates, setSearchIntermediates] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Flight planner state
@@ -141,20 +145,31 @@ const Dashboard = () => {
   };
 
   const getBriefing = async () => {
-    if (!route.trim()) {
+    const dep = searchDeparture.trim().toUpperCase();
+    const arr = searchArrival.trim().toUpperCase();
+    const mids = searchIntermediates
+      .map((i) => i.trim().toUpperCase())
+      .filter(Boolean);
+
+    if (!dep || !arr) {
       toast({
-        title: "Route Required",
-        description: "Please enter a flight route",
+        title: "Missing fields",
+        description: "Departure and arrival airports are required",
       });
       return;
     }
+
+    // Create route string from individual inputs
+    const routeParts = [dep, ...mids, arr].filter(Boolean);
+    const routeString = routeParts.join(" ");
+
     // Navigate to detail page using route string
     briefFromFlight({
       id: "route",
       user_id: user?.id,
-      departure: route.trim().split(/\s+/)[0],
-      arrival: route.trim().split(/\s+/).slice(-1)[0],
-      intermediates: route.trim().split(/\s+/).slice(1, -1),
+      departure: dep,
+      arrival: arr,
+      intermediates: mids,
       planned_at: null,
       created_at: new Date().toISOString(),
     } as any);
@@ -172,6 +187,21 @@ const Dashboard = () => {
 
   const removeIntermediate = (idx: number) => {
     setIntermediates((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Search flight intermediate functions
+  const addSearchIntermediate = () => {
+    setSearchIntermediates([...searchIntermediates, ""]);
+  };
+
+  const updateSearchIntermediate = (idx: number, value: string) => {
+    setSearchIntermediates((prev) =>
+      prev.map((v, i) => (i === idx ? value.toUpperCase() : v))
+    );
+  };
+
+  const removeSearchIntermediate = (idx: number) => {
+    setSearchIntermediates((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const saveFlight = async () => {
@@ -476,21 +506,78 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="search-dep"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Departure
+                  </Label>
+                  <Input
+                    id="search-dep"
+                    value={searchDeparture}
+                    onChange={(e) =>
+                      setSearchDeparture(e.target.value.toUpperCase())
+                    }
+                    placeholder="e.g., KJFK"
+                    className="h-11 border-gray-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="search-arr"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Arrival
+                  </Label>
+                  <Input
+                    id="search-arr"
+                    value={searchArrival}
+                    onChange={(e) =>
+                      setSearchArrival(e.target.value.toUpperCase())
+                    }
+                    placeholder="e.g., KLAX"
+                    className="h-11 border-gray-200"
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label
-                  htmlFor="route"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Enter your flight route
-                </Label>
-                <Input
-                  id="route"
-                  type="text"
-                  placeholder="e.g., KJFK EGLL LFPG"
-                  value={route}
-                  onChange={(e) => setRoute(e.target.value.toUpperCase())}
-                  className="h-11 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700">
+                    Intermediate Airports
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addSearchIntermediate}
+                    className="h-9 gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </Button>
+                </div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {searchIntermediates.map((val, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <Input
+                        value={val}
+                        onChange={(e) =>
+                          updateSearchIntermediate(idx, e.target.value)
+                        }
+                        placeholder="e.g., KORD"
+                        className="h-11 border-gray-200"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => removeSearchIntermediate(idx)}
+                        className="h-11"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
               <Button
                 onClick={getBriefing}
@@ -657,149 +744,32 @@ const Dashboard = () => {
                 </Card>
               )}
 
-              {/* Hazards and Alternates Grid */}
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Hazards */}
-                {briefing.hazards && briefing.hazards.length > 0 && (
-                  <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
-                    <CardHeader className="pb-4">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <AlertTriangle className="w-5 h-5 text-amber-600" />
-                        Weather Hazards
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {briefing.hazards.map((hazard, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg"
-                          >
-                            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm text-amber-800">
-                              {hazard}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Alternates - Categorized */}
-                {(briefing.alternate_categories || briefing.alternates) && (
-                  <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
-                    <CardHeader className="pb-4">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <MapPin className="w-5 h-5 text-green-600" />
-                        Alternate Airports
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {briefing.alternate_categories ? (
-                        <div className="grid md:grid-cols-3 gap-4">
-                          <div>
-                            <h4 className="font-semibold text-gray-800 mb-2">
-                              Least Deviation
-                            </h4>
-                            <div className="space-y-2">
-                              {(
-                                briefing.alternate_categories.least_deviation ||
-                                []
-                              ).map((alt, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
-                                >
-                                  <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <div>
-                                    <span className="font-semibold text-green-800">
-                                      {alt.icao}
-                                    </span>
-                                    <span className="text-sm text-green-700 ml-2">
-                                      {alt.name}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-800 mb-2">
-                              Best Fuel Efficiency
-                            </h4>
-                            <div className="space-y-2">
-                              {(
-                                briefing.alternate_categories
-                                  .best_fuel_efficiency || []
-                              ).map((alt, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
-                                >
-                                  <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <div>
-                                    <span className="font-semibold text-green-800">
-                                      {alt.icao}
-                                    </span>
-                                    <span className="text-sm text-green-700 ml-2">
-                                      {alt.name}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-800 mb-2">
-                              Safest
-                            </h4>
-                            <div className="space-y-2">
-                              {(briefing.alternate_categories.safest || []).map(
-                                (alt, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
-                                  >
-                                    <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                    <div>
-                                      <span className="font-semibold text-green-800">
-                                        {alt.icao}
-                                      </span>
-                                      <span className="text-sm text-green-700 ml-2">
-                                        {alt.name}
-                                      </span>
-                                    </div>
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          </div>
+              {/* Hazards */}
+              {briefing.hazards && briefing.hazards.length > 0 && (
+                <Card className="bg-white/80 backdrop-blur border-0 shadow-lg">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <AlertTriangle className="w-5 h-5 text-amber-600" />
+                      Weather Hazards
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {briefing.hazards.map((hazard, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg"
+                        >
+                          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-amber-800">
+                            {hazard}
+                          </span>
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {(briefing.alternates || []).map((alt, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-2 p-3 bg-green-50 rounded-lg"
-                            >
-                              <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                              <div>
-                                <span className="font-semibold text-green-800">
-                                  {alt.icao}
-                                </span>
-                                <span className="text-sm text-green-700 ml-2">
-                                  {alt.name}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </div>

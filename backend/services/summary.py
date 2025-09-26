@@ -177,9 +177,7 @@ def generate_detailed_report(
         taf_data = "\n".join([f"{t.station}: {t.raw_text}" for t in tafs if t.raw_text])
         notam_data = "\n".join([f"{n.airport} - {n.text}" for n in notams])
         pirep_data = "\n".join([f"{p.location}: {p.report}" for p in pireps])
-        alternate_data = "\n".join([f"{a.icao}: {a.name}" for a in alternates[:5]])
-        
-        prompt = f"""You are a professional flight dispatcher. Create a comprehensive 7-section pre-flight weather briefing using ONLY the raw AVWX API data provided below.
+        prompt = f"""You are a professional flight dispatcher. Create a comprehensive 6-section pre-flight weather briefing using ONLY the raw AVWX API data provided below.
 
 Route: {route_str}
 
@@ -197,14 +195,11 @@ NOTAM Data:
 PIREP Data:
 {pirep_data}
 
-Alternate Airports:
-{alternate_data}
-
 Route Points: {len(route_points)} coordinates
 
 === FORMATTING REQUIREMENTS ===
 
-Create a detailed briefing with these EXACT 7 sections (use these exact titles):
+Create a detailed briefing with these EXACT 6 sections (use these exact titles):
 
 1. FLIGHT OVERVIEW
 - Route summary with airport names
@@ -230,17 +225,13 @@ Create a detailed briefing with these EXACT 7 sections (use these exact titles):
 - Active NOTAMs for this airport
 - Landing conditions
 
-5. ALTERNATE AIRPORTS
-- List top 5 alternates
-- Rank by proximity/safety
-
-6. HAZARD & RISK ASSESSMENT
-- Risk level (LOW/MODERATE/HIGH)
+5. HAZARD & RISK ASSESSMENT
+- Start with "risk level: **RISK_LEVEL**" (where RISK_LEVEL is LOW RISK, MODERATE RISK, or HIGH RISK)
 - Weather hazards from METAR analysis
 - NOTAMs summary
 - Recommended actions
 
-7. OPERATIONAL NOTES
+6. OPERATIONAL NOTES
 - Flight planning details
 - Data sources
 - Last updated
@@ -257,7 +248,8 @@ CRITICAL FORMATTING RULES:
 - Include all NOTAMs and PIREPs
 - Make it comprehensive and professional
 - Use clean, readable text without markdown formatting
-- Highlight risk levels clearly (LOW RISK, MODERATE RISK, HIGH RISK)
+- Highlight risk levels clearly using EXACT format: "risk level: **LOW RISK**", "risk level: **MODERATE RISK**", or "risk level: **HIGH RISK**"
+- The risk level must be consistent throughout the report - if you state "MODERATE RISK" in the content, do NOT show "HIGH RISK" in headers
 
 Start directly with "1. FLIGHT OVERVIEW" - no introduction or preamble."""
         
