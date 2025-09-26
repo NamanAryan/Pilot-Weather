@@ -37,10 +37,7 @@ const AuthForm = () => {
           description: error.message,
         });
       } else {
-        toast({
-          title: "Magic Link Sent",
-          description: "Check your email for the sign-in link",
-        });
+        toast({ title: "Email sent", description: "Check your inbox for the sign-in link", variant: 'info' });
       }
     } catch (error) {
       toast({

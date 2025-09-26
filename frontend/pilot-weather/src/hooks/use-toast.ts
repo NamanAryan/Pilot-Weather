@@ -5,6 +5,7 @@ type ToasterToast = {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: React.ReactNode
+  variant?: 'success' | 'error' | 'info'
 }
 
 const actionTypes = {

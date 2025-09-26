@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -15,6 +15,7 @@ interface Briefing {
 
 export default function FlightDetail() {
   const { id } = useParams();
+  const [search] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -36,21 +37,32 @@ export default function FlightDetail() {
     const load = async () => {
       try {
         setLoadingFlight(true);
-        const { data, error } = await supabase
-          .from("flights")
-          .select("*")
-          .eq("id", id)
-          .single();
-        if (error) throw error;
-        setFlight(data);
+        if (id) {
+          const { data, error } = await supabase
+            .from("flights")
+            .select("*")
+            .eq("id", id)
+            .single();
+          if (error) throw error;
+          setFlight(data);
+        } else {
+          const routeParam = (search.get("route") || "").trim();
+          if (!routeParam) throw new Error("Missing route");
+          // Synthesize a temporary flight-like object
+          const parts = routeParam.split(/\s+/);
+          const dep = parts[0];
+          const arr = parts[parts.length - 1];
+          const mids = parts.slice(1, -1);
+          setFlight({ id: "route", departure: dep, arrival: arr, intermediates: mids, planned_at: null });
+        }
       } catch (e) {
         toast({ title: "Failed to load flight", description: e instanceof Error ? e.message : "" });
       } finally {
         setLoadingFlight(false);
       }
     };
-    if (id) load();
-  }, [id]);
+    if (id || search.get("route")) load();
+  }, [id, search]);
 
   useEffect(() => {
     const loadNames = async () => {
@@ -207,17 +219,45 @@ export default function FlightDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {briefing.alternates.map((a, i) => (
-                      <div key={i} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-                        <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        <div>
-                          <span className="font-semibold text-green-800">{a.icao}</span>
-                          <span className="text-sm text-green-700 ml-2">{a.name}</span>
+                  {"alternate_categories_single" in briefing && (briefing as any).alternate_categories_single ? (
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {[
+                        { key: "best_fuel_efficiency", label: "Best Fuel Efficiency" },
+                        { key: "least_deviation", label: "Least Deviation" },
+                        { key: "safest", label: "Safest for Emergencies" },
+                      ].map((cat) => {
+                        const a = (briefing as any).alternate_categories_single[cat.key];
+                        return (
+                          <div key={cat.key}>
+                            <h4 className="font-semibold text-gray-800 mb-2">{cat.label}</h4>
+                            {a ? (
+                              <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                                <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                <div>
+                                  <span className="font-semibold text-green-800">{a.icao}</span>
+                                  <span className="text-sm text-green-700 ml-2">{a.name}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-500">No suggestion</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {briefing.alternates.map((a, i) => (
+                        <div key={i} className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                          <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <div>
+                            <span className="font-semibold text-green-800">{a.icao}</span>
+                            <span className="text-sm text-green-700 ml-2">{a.name}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
