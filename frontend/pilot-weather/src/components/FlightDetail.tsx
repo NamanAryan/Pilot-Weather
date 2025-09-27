@@ -183,11 +183,34 @@ function summarizeMetar(metar: Metar): string {
 function hasThunderstorm(metar: Metar): boolean {
   if (!metar || !metar.raw_text) return false;
   const rawText = metar.raw_text.toUpperCase();
-  return (
-    rawText.includes("TS") ||
-    rawText.includes("THUNDERSTORM") ||
-    rawText.includes("TEMPO")
+  
+  // More comprehensive thunderstorm detection
+  const thunderstormIndicators = [
+    "TS",           // Thunderstorm
+    "THUNDERSTORM", // Full word
+    "TEMPO",        // Temporary conditions
+    "TSRA",         // Thunderstorm with rain
+    "TSSN",         // Thunderstorm with snow
+    "TSGR",         // Thunderstorm with hail
+    "TSGS",         // Thunderstorm with small hail
+    "CB",           // Cumulonimbus clouds
+    "TCU",          // Towering cumulus
+    "FC",           // Funnel cloud
+    "TORNADO",      // Tornado
+    "WATERSPOUT"    // Waterspout
+  ];
+  
+  const hasThunderstorm = thunderstormIndicators.some(indicator => 
+    rawText.includes(indicator)
   );
+  
+  console.log(`Thunderstorm check for ${metar.station}:`, {
+    rawText,
+    hasThunderstorm,
+    indicators: thunderstormIndicators.filter(indicator => rawText.includes(indicator))
+  });
+  
+  return hasThunderstorm;
 }
 
 // Function to generate thunderstorm polygon coordinates around an airport
@@ -369,6 +392,11 @@ function RouteMap({
           );
 
           // Check for thunderstorms and add red polygon if present
+          console.log(`Checking thunderstorm for ${code}:`, {
+            metar: metar,
+            raw_text: metar?.raw_text,
+            hasThunderstorm: metar ? hasThunderstorm(metar) : false
+          });
           if (metar && hasThunderstorm(metar)) {
             const thunderstormPolygon = generateThunderstormPolygon(
               info.latitude_deg,
