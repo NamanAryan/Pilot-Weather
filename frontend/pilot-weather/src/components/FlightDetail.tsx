@@ -1350,26 +1350,43 @@ export default function FlightDetail() {
 
             {/* Fatigue Warning */}
             {briefing.fatigue_warning && (
-              <Card className="bg-red-50 border-red-200 shadow-lg">
+              <Card className="bg-red-50 border-red-300 shadow-xl">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2 text-red-800">
-                    <AlertTriangle className="w-5 h-5" />
-                    Fatigue Warning
+                  <CardTitle className="text-xl flex items-center gap-3 text-red-900 font-bold">
+                    <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+                      <AlertTriangle className="w-5 h-5 text-white" />
+                    </div>
+                    Pilot Fatigue Risk Alert
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-red-100 rounded-lg p-4 border border-red-200">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-red-800 font-semibold mb-2">
-                          ⚠️ PILOT FATIGUE RISK DETECTED
+                  <div className="bg-white rounded-2xl p-6 border-2 border-red-200 shadow-inner">
+                    <div className="space-y-4">
+                      <div className="bg-red-600 text-white rounded-xl p-4 text-center">
+                        <p className="text-lg font-bold mb-1">
+                          ⚠️ FATIGUE WARNING DETECTED
                         </p>
-                        <p className="text-red-700 text-sm leading-relaxed">
+                        <p className="text-sm opacity-90">
+                          This flight may pose a fatigue risk
+                        </p>
+                      </div>
+                      
+                      <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                        <p className="text-red-800 font-semibold text-base mb-2">
+                          Schedule Conflict Details:
+                        </p>
+                        <p className="text-red-700 text-sm leading-relaxed bg-white rounded-lg p-3 border border-red-100">
                           {briefing.fatigue_reason}
                         </p>
-                        <p className="text-red-600 text-xs mt-2 font-medium">
-                          Consider rescheduling this flight or ensuring adequate rest periods between flights.
+                      </div>
+                      
+                      <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                        <p className="text-amber-800 font-semibold text-sm mb-2">
+                          💡 Safety Recommendation:
+                        </p>
+                        <p className="text-amber-700 text-sm leading-relaxed">
+                          Consider rescheduling this flight or ensuring adequate rest periods between flights. 
+                          Fatigue can significantly impact flight safety and decision-making abilities.
                         </p>
                       </div>
                     </div>

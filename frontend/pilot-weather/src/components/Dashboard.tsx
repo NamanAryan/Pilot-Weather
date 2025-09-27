@@ -782,9 +782,9 @@ const Dashboard = () => {
                                 {[...(f.intermediates || [])].join(" ")} {f.arrival}
                               </div>
                               {hasFatigueWarning && (
-                                <div className="flex items-center gap-1 text-red-200 text-xs font-semibold">
+                                <div className="flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                                   <AlertTriangle className="w-3 h-3" />
-                                  FATIGUE WARNING
+                                  FATIGUE RISK
                                 </div>
                               )}
                             </div>
