@@ -40,6 +40,8 @@ interface Briefing {
     best_fuel_efficiency?: Array<{ icao: string; name?: string | null }>;
     safest?: Array<{ icao: string; name?: string | null }>;
   };
+  fatigue_warning?: boolean;
+  fatigue_reason?: string;
 }
 
 type FlightStatus = "upcoming" | "past";
@@ -79,6 +81,38 @@ const Dashboard = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [planeAnimating, setPlaneAnimating] = useState(false);
   const [deletingFlightId, setDeletingFlightId] = useState<string | null>(null);
+
+  // Function to detect fatigue warnings for flights within 48 hours
+  const detectFatigueWarnings = (flights: FlightRow[]) => {
+    const upcomingFlights = flights.filter(f => f.planned_at && new Date(f.planned_at) > new Date());
+    const warnings = new Set<string>();
+
+    // Sort flights by planned_at date
+    upcomingFlights.sort((a, b) => {
+      if (!a.planned_at || !b.planned_at) return 0;
+      return new Date(a.planned_at).getTime() - new Date(b.planned_at).getTime();
+    });
+
+    // Check each flight against the next one
+    for (let i = 0; i < upcomingFlights.length - 1; i++) {
+      const currentFlight = upcomingFlights[i];
+      const nextFlight = upcomingFlights[i + 1];
+
+      if (!currentFlight.planned_at || !nextFlight.planned_at) continue;
+
+      const currentTime = new Date(currentFlight.planned_at).getTime();
+      const nextTime = new Date(nextFlight.planned_at).getTime();
+      const timeDifference = nextTime - currentTime;
+      const hoursDifference = timeDifference / (1000 * 60 * 60);
+
+      // If flights are within 48 hours, mark the later flight for fatigue warning
+      if (hoursDifference <= 48) {
+        warnings.add(nextFlight.id);
+      }
+    }
+
+    return warnings;
+  };
   
   // Validation state
   const [departureValid, setDepartureValid] = useState(false);
@@ -728,32 +762,49 @@ const Dashboard = () => {
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
-                    {upcomingFlights.map((f) => (
-                      <div key={f.id} className={`group relative ${deletingFlightId === f.id ? 'delete-fade' : ''}`}>
-                        <button
-                          onClick={() => briefFromFlight(f)}
-                          className="w-full text-left p-3 bg-gradient-to-br from-gray-800 to-black text-white hover:from-black hover:to-gray-800 rounded-lg border border-gray-800 shadow-lg hover-lift btn-press zoom-in"
-                        >
-                          <div className="font-semibold text-white">
-                            {f.departure} →{" "}
-                            {[...(f.intermediates || [])].join(" ")} {f.arrival}
-                          </div>
-                          {f.planned_at && (
-                            <div className="text-xs text-gray-200 mt-1">
-                              {new Date(f.planned_at).toLocaleString()}
+                    {upcomingFlights.map((f) => {
+                      const fatigueWarnings = detectFatigueWarnings(upcomingFlights);
+                      const hasFatigueWarning = fatigueWarnings.has(f.id);
+                      
+                      return (
+                        <div key={f.id} className={`group relative ${deletingFlightId === f.id ? 'delete-fade' : ''}`}>
+                          <button
+                            onClick={() => briefFromFlight(f)}
+                            className={`w-full text-left p-3 rounded-lg border shadow-lg hover-lift btn-press zoom-in ${
+                              hasFatigueWarning 
+                                ? 'bg-gradient-to-br from-red-600 to-red-800 border-red-700 hover:from-red-700 hover:to-red-900' 
+                                : 'bg-gradient-to-br from-gray-800 to-black border-gray-800 hover:from-black hover:to-gray-800'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold text-white">
+                                {f.departure} →{" "}
+                                {[...(f.intermediates || [])].join(" ")} {f.arrival}
+                              </div>
+                              {hasFatigueWarning && (
+                                <div className="flex items-center gap-1 text-red-200 text-xs font-semibold">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  FATIGUE WARNING
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => deleteFlight(f.id)}
-                          className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 hover-scale btn-press ${deletingFlightId === f.id ? 'delete-animation' : ''}`}
-                          title="Delete"
-                          aria-label="Delete upcoming flight"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                            {f.planned_at && (
+                              <div className="text-xs text-gray-200 mt-1">
+                                {new Date(f.planned_at).toLocaleString()}
+                              </div>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => deleteFlight(f.id)}
+                            className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 hover-scale btn-press ${deletingFlightId === f.id ? 'delete-animation' : ''}`}
+                            title="Delete"
+                            aria-label="Delete upcoming flight"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

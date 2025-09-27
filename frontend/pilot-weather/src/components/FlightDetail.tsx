@@ -89,6 +89,8 @@ interface Briefing {
     lon: number;
     altitude: number;
   }>;
+  fatigue_warning?: boolean;
+  fatigue_reason?: string;
 }
 
 type AirportInfo = {
@@ -1000,6 +1002,51 @@ export default function FlightDetail() {
     Record<string, AirportInfo>
   >({});
 
+  // Function to detect fatigue warnings for flights within 48 hours
+  const detectFatigueWarning = async (flightId: string) => {
+    if (!flightId || flightId === "route") return null;
+
+    try {
+      // Get all upcoming flights for the user
+      const { data: flights, error } = await supabase
+        .from("flights")
+        .select("*")
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+        .not("planned_at", "is", null)
+        .gt("planned_at", new Date().toISOString())
+        .order("planned_at", { ascending: true });
+
+      if (error || !flights) return null;
+
+      // Find the current flight
+      const currentFlight = flights.find(f => f.id === flightId);
+      if (!currentFlight || !currentFlight.planned_at) return null;
+
+      // Check if there's a previous flight within 48 hours
+      const currentTime = new Date(currentFlight.planned_at).getTime();
+      
+      for (const otherFlight of flights) {
+        if (otherFlight.id === flightId || !otherFlight.planned_at) continue;
+        
+        const otherTime = new Date(otherFlight.planned_at).getTime();
+        const timeDifference = Math.abs(currentTime - otherTime);
+        const hoursDifference = timeDifference / (1000 * 60 * 60);
+
+        if (hoursDifference <= 48) {
+          return {
+            fatigue_warning: true,
+            fatigue_reason: `Flight scheduled within 48 hours of another flight (${Math.round(hoursDifference)} hours apart)`
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error detecting fatigue warning:", error);
+      return null;
+    }
+  };
+
   const route = useMemo(() => {
     if (!flight) return "";
     const parts = [
@@ -1102,7 +1149,21 @@ export default function FlightDetail() {
           "No OpenSky track found for this route in the recent time window.";
       }
       (window as any).__briefingRouteLoaded = true;
-      setBriefing(data);
+      
+      // Add fatigue warning if this is a saved flight
+      let briefingWithFatigue = data;
+      if (id && id !== "route") {
+        const fatigueWarning = await detectFatigueWarning(id);
+        if (fatigueWarning) {
+          briefingWithFatigue = {
+            ...data,
+            fatigue_warning: fatigueWarning.fatigue_warning,
+            fatigue_reason: fatigueWarning.fatigue_reason
+          };
+        }
+      }
+      
+      setBriefing(briefingWithFatigue);
       setLastRefreshedAt(new Date().toISOString());
       toast({ title: "Refreshed", description: "Latest briefing loaded" });
     } catch (e) {
@@ -1282,6 +1343,36 @@ export default function FlightDetail() {
                         </ul>
                       );
                     })()}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Fatigue Warning */}
+            {briefing.fatigue_warning && (
+              <Card className="bg-red-50 border-red-200 shadow-lg">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2 text-red-800">
+                    <AlertTriangle className="w-5 h-5" />
+                    Fatigue Warning
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-red-100 rounded-lg p-4 border border-red-200">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-red-800 font-semibold mb-2">
+                          ⚠️ PILOT FATIGUE RISK DETECTED
+                        </p>
+                        <p className="text-red-700 text-sm leading-relaxed">
+                          {briefing.fatigue_reason}
+                        </p>
+                        <p className="text-red-600 text-xs mt-2 font-medium">
+                          Consider rescheduling this flight or ensuring adequate rest periods between flights.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
