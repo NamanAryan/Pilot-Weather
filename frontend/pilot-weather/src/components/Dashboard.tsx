@@ -816,6 +816,83 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
+              {/* Alternate Airports Section */}
+              {briefing.alternate_categories && (
+                <Card className="bg-white rounded-3xl border-0 shadow-xl">
+                  <CardHeader className="pb-6">
+                    <CardTitle className="flex items-center gap-3 text-xl">
+                      <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-purple-600" />
+                      </div>
+                      Alternate Airports
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Least Deviation */}
+                      {briefing.alternate_categories.least_deviation && briefing.alternate_categories.least_deviation.length > 0 && (
+                        <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
+                          <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2 text-lg">
+                            <MapPin className="w-5 h-5" />
+                            Least Deviation
+                          </h4>
+                          <div className="space-y-2">
+                            {briefing.alternate_categories.least_deviation.map((airport, idx) => (
+                              <div key={idx} className="text-sm text-blue-700">
+                                <span className="font-semibold">{airport.icao}</span>
+                                {airport.name && (
+                                  <span className="ml-2 text-blue-600">- {airport.name}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Best Fuel Efficiency */}
+                      {briefing.alternate_categories.best_fuel_efficiency && briefing.alternate_categories.best_fuel_efficiency.length > 0 && (
+                        <div className="bg-green-50 rounded-2xl p-6 border border-green-200">
+                          <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2 text-lg">
+                            <MapPin className="w-5 h-5" />
+                            Best Fuel Efficiency
+                          </h4>
+                          <div className="space-y-2">
+                            {briefing.alternate_categories.best_fuel_efficiency.map((airport, idx) => (
+                              <div key={idx} className="text-sm text-green-700">
+                                <span className="font-semibold">{airport.icao}</span>
+                                {airport.name && (
+                                  <span className="ml-2 text-green-600">- {airport.name}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Safest */}
+                      {briefing.alternate_categories.safest && briefing.alternate_categories.safest.length > 0 && (
+                        <div className="bg-red-50 rounded-2xl p-6 border border-red-200">
+                          <h4 className="font-bold text-red-800 mb-4 flex items-center gap-2 text-lg">
+                            <MapPin className="w-5 h-5" />
+                            Safest
+                          </h4>
+                          <div className="space-y-2">
+                            {briefing.alternate_categories.safest.map((airport, idx) => (
+                              <div key={idx} className="text-sm text-red-700">
+                                <span className="font-semibold">{airport.icao}</span>
+                                {airport.name && (
+                                  <span className="ml-2 text-red-600">- {airport.name}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Weather Data */}
               {briefing.metars && briefing.metars.length > 0 && (
                 <Card className="bg-white rounded-3xl border-0 shadow-xl">

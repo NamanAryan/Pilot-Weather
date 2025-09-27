@@ -1314,6 +1314,87 @@ export default function FlightDetail() {
               </CardContent>
             </Card>
 
+            {/* Alternate Airports Section */}
+            {briefing.alternate_categories_single && (
+              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg card-hover">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-purple-600" />
+                    Alternate Airports
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Least Deviation */}
+                    {briefing.alternate_categories_single.least_deviation && (
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Least Deviation
+                        </h4>
+                        <div className="space-y-1">
+                          <div className="text-sm text-blue-700">
+                            <span className="font-medium">
+                              {briefing.alternate_categories_single.least_deviation.icao}
+                            </span>
+                            {briefing.alternate_categories_single.least_deviation.name && (
+                              <span className="ml-2 text-blue-600">
+                                - {briefing.alternate_categories_single.least_deviation.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Best Fuel Efficiency */}
+                    {briefing.alternate_categories_single.best_fuel_efficiency && (
+                      <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                        <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Best Fuel Efficiency
+                        </h4>
+                        <div className="space-y-1">
+                          <div className="text-sm text-green-700">
+                            <span className="font-medium">
+                              {briefing.alternate_categories_single.best_fuel_efficiency.icao}
+                            </span>
+                            {briefing.alternate_categories_single.best_fuel_efficiency.name && (
+                              <span className="ml-2 text-green-600">
+                                - {briefing.alternate_categories_single.best_fuel_efficiency.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Safest */}
+                    {briefing.alternate_categories_single.safest && (
+                      <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                        <h4 className="font-semibold text-red-800 mb-2 flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Safest
+                        </h4>
+                        <div className="space-y-1">
+                          <div className="text-sm text-red-700">
+                            <span className="font-medium">
+                              {briefing.alternate_categories_single.safest.icao}
+                            </span>
+                            {briefing.alternate_categories_single.safest.name && (
+                              <span className="ml-2 text-red-600">
+                                - {briefing.alternate_categories_single.safest.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {briefing.metars && briefing.metars.length > 0 && (
               <Card className="bg-white/80 backdrop-blur border-0 shadow-lg card-hover">
                 <CardHeader className="pb-4">
