@@ -816,6 +816,34 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
+              {/* Weather Data */}
+              {briefing.metars && briefing.metars.length > 0 && (
+                <Card className="bg-white rounded-3xl border-0 shadow-xl">
+                  <CardHeader className="pb-6">
+                    <CardTitle className="flex items-center gap-3 text-xl">
+                      <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center">
+                        <Plane className="w-5 h-5 text-gray-600" />
+                      </div>
+                      Current Weather (METARs)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4">
+                      {briefing.metars.map((metar, idx) => (
+                        <div key={idx} className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-6">
+                          <div className="font-bold text-gray-600 mb-2 text-lg">
+                            {metar.station}
+                          </div>
+                          <div className="text-sm text-slate-700 font-mono bg-white rounded-xl p-3">
+                            {metar.raw_text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Alternate Airports Section */}
               {briefing.alternate_categories && (
                 <Card className="bg-white rounded-3xl border-0 shadow-xl">
@@ -888,34 +916,6 @@ const Dashboard = () => {
                           </div>
                         </div>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Weather Data */}
-              {briefing.metars && briefing.metars.length > 0 && (
-                <Card className="bg-white rounded-3xl border-0 shadow-xl">
-                  <CardHeader className="pb-6">
-                    <CardTitle className="flex items-center gap-3 text-xl">
-                      <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center">
-                        <Plane className="w-5 h-5 text-gray-600" />
-                      </div>
-                      Current Weather (METARs)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-4">
-                      {briefing.metars.map((metar, idx) => (
-                        <div key={idx} className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-6">
-                          <div className="font-bold text-gray-600 mb-2 text-lg">
-                            {metar.station}
-                          </div>
-                          <div className="text-sm text-slate-700 font-mono bg-white rounded-xl p-3">
-                            {metar.raw_text}
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   </CardContent>
                 </Card>

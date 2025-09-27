@@ -1314,6 +1314,31 @@ export default function FlightDetail() {
               </CardContent>
             </Card>
 
+            {briefing.metars && briefing.metars.length > 0 && (
+              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg card-hover">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Plane className="w-5 h-5 text-gray-600" /> Current Weather
+                    (METARs)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3">
+                    {briefing.metars.map((m, i) => (
+                      <div key={i} className="bg-gray-50 rounded-lg p-4">
+                        <div className="font-semibold text-gray-600 mb-1">
+                          {m.station}
+                        </div>
+                        <div className="text-sm text-gray-700 font-mono">
+                          {m.raw_text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Alternate Airports Section */}
             {briefing.alternate_categories_single && (
               <Card className="bg-white/80 backdrop-blur border-0 shadow-lg card-hover">
@@ -1390,31 +1415,6 @@ export default function FlightDetail() {
                         </div>
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {briefing.metars && briefing.metars.length > 0 && (
-              <Card className="bg-white/80 backdrop-blur border-0 shadow-lg card-hover">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Plane className="w-5 h-5 text-gray-600" /> Current Weather
-                    (METARs)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3">
-                    {briefing.metars.map((m, i) => (
-                      <div key={i} className="bg-gray-50 rounded-lg p-4">
-                        <div className="font-semibold text-gray-600 mb-1">
-                          {m.station}
-                        </div>
-                        <div className="text-sm text-gray-700 font-mono">
-                          {m.raw_text}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </CardContent>
               </Card>
