@@ -440,20 +440,6 @@ function RouteMap({
           // Always connect the actual airport coordinates
           L.polyline(coords, { color: "#ec4899", weight: 3 }).addTo(map);
 
-          // Also show the detailed route if available (as a different colored line)
-          const realRoute: Array<{
-            lat: number;
-            lon: number;
-            altitude?: number;
-          }> = (window as any).__briefingRoute || [];
-          if (Array.isArray(realRoute) && realRoute.length >= 2) {
-            const rcoords = realRoute.map((p) => [p.lat, p.lon]);
-            L.polyline(rcoords, {
-              color: "#3b82f6",
-              weight: 2,
-              opacity: 0.7,
-            }).addTo(map);
-          }
 
           const group = L.featureGroup(coords.map((c) => L.marker(c)));
           map.fitBounds(group.getBounds().pad(0.2));
