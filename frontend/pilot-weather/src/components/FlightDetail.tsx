@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
+import planeLoadingGif from "../assets/plane-loading.gif";
 import {
   ArrowLeft,
   RefreshCw,
@@ -1201,7 +1202,7 @@ export default function FlightDetail() {
             <div className="mb-4">
               <div className="gif-loading-container">
                 <img
-                  src="https://s5.ezgif.com/tmp/ezgif-5c95bcdba8a780.gif"
+                  src={planeLoadingGif}
                   alt="Loading weather data..."
                   className="loading-gif"
                   style={{
@@ -1211,17 +1212,7 @@ export default function FlightDetail() {
                     boxShadow: 'none',
                     filter: 'none'
                   }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
-                    if (nextElement) {
-                      nextElement.style.display = 'flex';
-                    }
-                  }}
                 />
-                <div className="w-48 h-48 flex items-center justify-center" style={{display: 'none'}}>
-                  <div className="animate-spin rounded-full h-32 w-32 border-4 border-gray-200 border-t-gray-600"></div>
-                </div>
               </div>
             </div>
             <div className="text-gray-600 text-center">
