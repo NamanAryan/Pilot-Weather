@@ -121,7 +121,9 @@ def search_airports(q: str = ""):
     
     Returns: List of {icao, name, city, country} objects
     """
+    print(f"🔍 Airport search request: '{q}'")
     if not q or len(q) < 2:
+        print("❌ Query too short")
         return []
     
     import csv
@@ -160,19 +162,23 @@ def search_airports(q: str = ""):
         # Search through airports data
         for row in airports_data:
             icao = row.get('icao_code', '').strip()
+            ident = row.get('ident', '').strip()  # Use ident as fallback
             name = row.get('name', '').strip()
             city = row.get('municipality', '').strip()
             country = row.get('iso_country', '').strip()
             
-            # Only include airports with ICAO codes
-            if not icao:
+            # Use ICAO code if available, otherwise use ident
+            airport_code = icao if icao else ident
+            
+            # Only include airports with codes
+            if not airport_code:
                 continue
             
-            # Search in ICAO code, name, or city
-            search_text = f"{icao} {name} {city}".lower()
+            # Search in airport code, name, or city
+            search_text = f"{airport_code} {name} {city}".lower()
             if q.lower() in search_text:
                 results.append({
-                    "icao": icao,
+                    "icao": airport_code,
                     "name": name,
                     "city": city,
                     "country": country
@@ -183,9 +189,10 @@ def search_airports(q: str = ""):
                     break
                     
     except Exception as e:
-        print(f"Error reading airports data: {e}")
+        print(f"❌ Error reading airports data: {e}")
         return []
     
+    print(f"✅ Found {len(results)} airports for query '{q}'")
     return results
 
 @app.post("/analyze-route", response_model=RouteAnalysisResponse)

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Input } from './ui/input';
-import { Check, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import { Input } from "./ui/input";
+import { Check, X } from "lucide-react";
+import { API_ENDPOINTS } from "../config";
 
 interface Airport {
   icao: string;
@@ -22,7 +23,7 @@ export function AirportAutocomplete({
   onChange,
   placeholder = "Enter airport code",
   className = "",
-  onValidationChange
+  onValidationChange,
 }: AirportAutocompleteProps) {
   const [airports, setAirports] = useState<Airport[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -44,12 +45,28 @@ export function AirportAutocomplete({
     const timeoutId = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`http://localhost:8000/airports/search?q=${encodeURIComponent(value)}`);
+        console.log(`🔍 Searching airports for: "${value}"`);
+        console.log(
+          `📡 API URL: ${API_ENDPOINTS.AIRPORTS_SEARCH}?q=${encodeURIComponent(
+            value
+          )}`
+        );
+
+        const response = await fetch(
+          `${API_ENDPOINTS.AIRPORTS_SEARCH}?q=${encodeURIComponent(value)}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
+        console.log(`✅ Found ${data.length} airports:`, data);
+
         setAirports(data);
         setIsOpen(data.length > 0);
       } catch (error) {
-        console.error('Error searching airports:', error);
+        console.error("❌ Error searching airports:", error);
         setAirports([]);
         setIsOpen(false);
       } finally {
@@ -63,8 +80,8 @@ export function AirportAutocomplete({
   // Check if current value is a valid airport
   useEffect(() => {
     if (value.length >= 3) {
-      const isValidAirport = airports.some(airport => 
-        airport.icao.toUpperCase() === value.toUpperCase()
+      const isValidAirport = airports.some(
+        (airport) => airport.icao.toUpperCase() === value.toUpperCase()
       );
       setIsValid(isValidAirport);
       onValidationChange?.(isValidAirport);
@@ -87,8 +104,8 @@ export function AirportAutocomplete({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,7 +123,7 @@ export function AirportAutocomplete({
   };
 
   const handleClear = () => {
-    onChange('');
+    onChange("");
     setSelectedAirport(null);
     setIsValid(false);
     onValidationChange?.(false);
@@ -122,11 +139,11 @@ export function AirportAutocomplete({
           onChange={handleInputChange}
           placeholder={placeholder}
           className={`pr-20 ${className} ${
-            value && !isValid ? 'border-red-500 focus:border-red-500' : ''
+            value && !isValid ? "border-red-500 focus:border-red-500" : ""
           }`}
           onFocus={() => value.length >= 2 && setIsOpen(true)}
         />
-        
+
         {/* Clear button */}
         {value && (
           <button
@@ -137,7 +154,7 @@ export function AirportAutocomplete({
             <X className="w-4 h-4" />
           </button>
         )}
-        
+
         {/* Validation indicator */}
         {value && (
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
@@ -168,7 +185,9 @@ export function AirportAutocomplete({
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium text-gray-900">{airport.icao}</div>
+                    <div className="font-medium text-gray-900">
+                      {airport.icao}
+                    </div>
                     <div className="text-sm text-gray-500">{airport.name}</div>
                     <div className="text-xs text-gray-400">
                       {airport.city}, {airport.country}
@@ -178,7 +197,9 @@ export function AirportAutocomplete({
               </button>
             ))
           ) : value.length >= 2 ? (
-            <div className="px-3 py-2 text-sm text-gray-500">No results found</div>
+            <div className="px-3 py-2 text-sm text-gray-500">
+              No results found
+            </div>
           ) : null}
         </div>
       )}
