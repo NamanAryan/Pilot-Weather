@@ -1,14 +1,35 @@
 from dotenv import load_dotenv
 import os
+import logging
+from typing import List
 
 load_dotenv()
 
-print("🔧 Environment Check:")
-print(f"   AVWX_TOKEN: {'✅' if os.getenv('AVWX_TOKEN') else '❌ MISSING'}")
-print(f"   GEMINI_API_KEY: {'✅' if os.getenv('GEMINI_API_KEY') else '❌ MISSING'}")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, HTTPException
+# Environment validation
+required_env_vars = ["AVWX_TOKEN", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY"]
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+
+if missing_vars:
+    logger.warning(f"Missing environment variables: {', '.join(missing_vars)}")
+    logger.warning("Some features may not work properly")
+
+logger.info("🔧 Environment Check:")
+logger.info(f"   AVWX_TOKEN: {'✅' if os.getenv('AVWX_TOKEN') else '❌ MISSING'}")
+logger.info(f"   GEMINI_API_KEY: {'✅' if os.getenv('GEMINI_API_KEY') else '❌ MISSING'}")
+logger.info(f"   SUPABASE_URL: {'✅' if os.getenv('SUPABASE_URL') else '❌ MISSING'}")
+logger.info(f"   SUPABASE_ANON_KEY: {'✅' if os.getenv('SUPABASE_ANON_KEY') else '❌ MISSING'}")
+
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from models.route import RouteRequest
 from models.response import RouteAnalysisResponse
 from services.weather import fetch_metar, fetch_taf, fetch_notams, fetch_pireps
@@ -17,22 +38,55 @@ from services.airports import get_alternate_airports, get_top3_alternate_airport
 from services.airports import get_airport_info
 from services.summary import summarize_weather
 
-app = FastAPI(title="Aviation Pre-Flight Assistant")
+# Get allowed origins from environment
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 
+app = FastAPI(
+    title="Aviation Pre-Flight Assistant",
+    description="AI-powered weather briefing and hazard analysis system for pilots",
+    version="1.0.0",
+    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None
+)
+
+# Security middleware
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["*"] if os.getenv("ENVIRONMENT") == "development" else ["yourdomain.com", "*.yourdomain.com"]
+)
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
 @app.get("/")
 def health():
+    """Health check endpoint"""
     return {
         "status": "ok", 
+        "service": "Aviation Pre-Flight Assistant",
+        "version": "1.0.0",
         "avwx_configured": bool(os.getenv("AVWX_TOKEN")),
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "supabase_configured": bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_ANON_KEY"))
+    }
+
+@app.get("/health")
+def detailed_health():
+    """Detailed health check for monitoring"""
+    return {
+        "status": "healthy",
+        "timestamp": "2024-01-01T00:00:00Z",  # This would be dynamic in real implementation
+        "services": {
+            "avwx": "configured" if os.getenv("AVWX_TOKEN") else "missing",
+            "gemini": "configured" if os.getenv("GEMINI_API_KEY") else "missing",
+            "supabase": "configured" if os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_ANON_KEY") else "missing"
+        }
     }
 
 

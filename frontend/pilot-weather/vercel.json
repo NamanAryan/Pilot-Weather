@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "name": "pilot-weather",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "https://pilot-weather-backend.onrender.com/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_API_BASE_URL": "https://pilot-weather-backend.onrender.com"
+  },
+  "functions": {
+    "app/api/**/*.py": {
+      "runtime": "python3.9"
+    }
+  }
+}

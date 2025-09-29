@@ -12,6 +12,7 @@ import {
 import { Separator } from "./ui/separator";
 import { useToast } from "../hooks/use-toast";
 import { supabase } from "../supabaseClient";
+import { getEmailRedirectUrl, getRedirectUrl } from "../authConfig";
 import { Plane, Mail } from "lucide-react";
 
 const AuthForm = () => {
@@ -27,17 +28,24 @@ const AuthForm = () => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: getEmailRedirectUrl(),
         },
       });
 
       if (error) {
+        console.error("Magic link error:", error);
         toast({
-          title: "Error",
-          description: error.message,
+          title: "Authentication Error",
+          description:
+            error.message || "Failed to send magic link. Please try again.",
+          variant: "destructive",
         });
       } else {
-        toast({ title: "Email sent", description: "Check your inbox for the sign-in link", variant: 'info' });
+        toast({
+          title: "Email sent",
+          description: "Check your inbox for the sign-in link",
+          variant: "default",
+        });
       }
     } catch (error) {
       toast({
@@ -56,14 +64,17 @@ const AuthForm = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: getRedirectUrl(),
         },
       });
 
       if (error) {
+        console.error("Google OAuth error:", error);
         toast({
-          title: "Error",
-          description: error.message,
+          title: "Authentication Error",
+          description:
+            error.message || "Failed to sign in with Google. Please try again.",
+          variant: "destructive",
         });
         setIsLoading(false);
       }
@@ -87,7 +98,9 @@ const AuthForm = () => {
           <h1 className="text-3xl font-bold text-slate-800 mb-3">
             Pilot Briefing
           </h1>
-          <p className="text-slate-600 text-lg">Aviation weather at your fingertips</p>
+          <p className="text-slate-600 text-lg">
+            Aviation weather at your fingertips
+          </p>
         </div>
 
         <Card className="bg-white rounded-3xl border-0 shadow-2xl">
@@ -103,8 +116,8 @@ const AuthForm = () => {
           <CardContent className="space-y-6">
             <form onSubmit={handleMagicLink} className="space-y-4">
               <div className="space-y-2">
-                <Label 
-                  htmlFor="email" 
+                <Label
+                  htmlFor="email"
                   className="text-sm font-medium text-gray-700 flex items-center gap-2"
                 >
                   <Mail className="w-4 h-4" />
@@ -120,9 +133,9 @@ const AuthForm = () => {
                   className="h-11 border-gray-200 focus:border-gray-800 focus:ring-2 focus:ring-gray-200 transition-all input-focus"
                 />
               </div>
-              <Button 
-                type="submit" 
-                className="w-full h-11 bg-gray-800 hover:bg-black text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 hover-lift btn-press" 
+              <Button
+                type="submit"
+                className="w-full h-11 bg-gray-800 hover:bg-black text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 hover-lift btn-press"
                 disabled={isLoading}
               >
                 {isLoading ? (
