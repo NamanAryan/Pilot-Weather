@@ -38,13 +38,13 @@ const AuthForm = () => {
           title: "Authentication Error",
           description:
             error.message || "Failed to send magic link. Please try again.",
-          variant: "destructive",
+          variant: "error",
         });
       } else {
         toast({
           title: "Email sent",
           description: "Check your inbox for the sign-in link",
-          variant: "default",
+          variant: "success",
         });
       }
     } catch (error) {
@@ -74,7 +74,7 @@ const AuthForm = () => {
           title: "Authentication Error",
           description:
             error.message || "Failed to sign in with Google. Please try again.",
-          variant: "destructive",
+          variant: "error",
         });
         setIsLoading(false);
       }

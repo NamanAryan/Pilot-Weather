@@ -126,39 +126,64 @@ def search_airports(q: str = ""):
     
     import csv
     import os
+    import requests
+    from io import StringIO
     
     results = []
     airports_file = os.path.join(os.path.dirname(__file__), "data", "airports.csv")
     
     try:
-        with open(airports_file, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                icao = row.get('icao_code', '').strip()
-                name = row.get('name', '').strip()
-                city = row.get('municipality', '').strip()
-                country = row.get('iso_country', '').strip()
+        # Try to load from local file first
+        if os.path.exists(airports_file):
+            with open(airports_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                airports_data = list(reader)
+        else:
+            # Download from OurAirports if local file doesn't exist
+            print("🌐 Downloading airports data from OurAirports...")
+            url = "https://davidmegginson.github.io/ourairports-data/airports.csv"
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+            
+            # Create data directory if it doesn't exist
+            os.makedirs(os.path.dirname(airports_file), exist_ok=True)
+            
+            # Save to local file for future use
+            with open(airports_file, 'w', encoding='utf-8') as f:
+                f.write(response.text)
+            
+            # Parse the CSV data
+            reader = csv.DictReader(StringIO(response.text))
+            airports_data = list(reader)
+            print(f"✅ Downloaded {len(airports_data)} airports")
+        
+        # Search through airports data
+        for row in airports_data:
+            icao = row.get('icao_code', '').strip()
+            name = row.get('name', '').strip()
+            city = row.get('municipality', '').strip()
+            country = row.get('iso_country', '').strip()
+            
+            # Only include airports with ICAO codes
+            if not icao:
+                continue
+            
+            # Search in ICAO code, name, or city
+            search_text = f"{icao} {name} {city}".lower()
+            if q.lower() in search_text:
+                results.append({
+                    "icao": icao,
+                    "name": name,
+                    "city": city,
+                    "country": country
+                })
                 
-                # Only include airports with ICAO codes
-                if not icao:
-                    continue
-                
-                # Search in ICAO code, name, or city
-                search_text = f"{icao} {name} {city}".lower()
-                if q.lower() in search_text:
-                    results.append({
-                        "icao": icao,
-                        "name": name,
-                        "city": city,
-                        "country": country
-                    })
+                # Limit results to 20 for performance
+                if len(results) >= 20:
+                    break
                     
-                    # Limit results to 20 for performance
-                    if len(results) >= 20:
-                        break
-                        
     except Exception as e:
-        print(f"Error reading airports file: {e}")
+        print(f"Error reading airports data: {e}")
         return []
     
     return results

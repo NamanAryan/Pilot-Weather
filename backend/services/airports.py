@@ -38,14 +38,47 @@ def _load_airports() -> List[Dict[str, str]]:
     like OurAirports. We keep raw strings to avoid unintended coercions.
     """
     rows: List[Dict[str, str]] = []
-    if not os.path.exists(DATA_FILE_PATH):
-        return rows
-
-    with open(DATA_FILE_PATH, "r", encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
+    
+    # Try to load from local file first
+    if os.path.exists(DATA_FILE_PATH):
+        try:
+            with open(DATA_FILE_PATH, "r", encoding="utf-8", newline="") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    rows.append(row)
+            print(f"✅ Loaded {len(rows)} airports from local file")
+            return rows
+        except Exception as e:
+            print(f"❌ Error reading local airports file: {e}")
+    
+    # If local file doesn't exist or fails, download from OurAirports
+    try:
+        print("🌐 Downloading airports data from OurAirports...")
+        import requests
+        from io import StringIO
+        
+        url = "https://davidmegginson.github.io/ourairports-data/airports.csv"
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        # Create data directory if it doesn't exist
+        os.makedirs(os.path.dirname(DATA_FILE_PATH), exist_ok=True)
+        
+        # Save to local file for future use
+        with open(DATA_FILE_PATH, 'w', encoding='utf-8') as f:
+            f.write(response.text)
+        
+        # Parse the CSV data
+        reader = csv.DictReader(StringIO(response.text))
         for row in reader:
             rows.append(row)
-    return rows
+        
+        print(f"✅ Downloaded and cached {len(rows)} airports")
+        return rows
+        
+    except Exception as e:
+        print(f"❌ Error downloading airports data: {e}")
+        return rows
 
 
 def _extract_icao(row: Dict[str, str]) -> Optional[str]:
