@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
+import { API_ENDPOINTS } from "../config";
 import planeLoadingGif from "../assets/plane-loading.gif";
 import {
   ArrowLeft,
@@ -1112,17 +1113,13 @@ export default function FlightDetail() {
     };
     if (id || search.get("route")) load();
   }, [id, search]);
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL ||
-    "https://pilot-weather-backend.onrender.com";
 
-  console.log("FlightDetail apiBaseUrl:", apiBaseUrl);
   useEffect(() => {
     const loadNames = async () => {
       if (!route) return;
       try {
         const resp = await fetch(
-          `https://pilot-weather-backend.onrender.com/airport-info?codes=${encodeURIComponent(route)}`
+          `${API_ENDPOINTS.AIRPORT_INFO}?codes=${encodeURIComponent(route)}`
         );
         const data = await resp.json();
         const map: Record<string, string | null> = {};
@@ -1149,7 +1146,7 @@ export default function FlightDetail() {
       (window as any).__briefingRouteLoaded = false;
       (window as any).__briefingRouteError = undefined;
       const airports = route.trim().split(/\s+/);
-      const response = await fetch(`https://pilot-weather-backend.onrender.com/analyze-route`, {
+      const response = await fetch(API_ENDPOINTS.ANALYZE_ROUTE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ airports }),

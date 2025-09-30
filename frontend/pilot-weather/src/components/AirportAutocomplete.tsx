@@ -32,8 +32,7 @@ export function AirportAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL 
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
   // Debounced search
   useEffect(() => {
     if (value.length < 2) {
@@ -47,7 +46,9 @@ export function AirportAutocomplete({
       setIsLoading(true);
       try {
         const response = await fetch(
-          `${apiBaseUrl}/airports/search?q=${encodeURIComponent(value)}`
+          `https://pilot-weather-backend.onrender.com/airports/search?q=${encodeURIComponent(
+            value
+          )}`
         );
         const data = await response.json();
         console.log(`✅ Found ${data.length} airports:`, data);
