@@ -22,7 +22,6 @@ import {
   Equal,
   Trash2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 interface Briefing {
   summary_5line: string;
@@ -44,8 +43,6 @@ interface Briefing {
   fatigue_reason?: string;
 }
 
-type FlightStatus = "upcoming" | "past";
-
 interface FlightRow {
   id: string;
   user_id: string;
@@ -59,8 +56,8 @@ interface FlightRow {
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [briefingLoading, setBriefingLoading] = useState(false);
-  const [briefing, setBriefing] = useState<Briefing | null>(null);
+  const [briefingLoading] = useState(false);
+  const [briefing] = useState<Briefing | null>(null);
 
   // Search flight state (separate from Add Flight)
   const [searchDeparture, setSearchDeparture] = useState("");
@@ -84,13 +81,17 @@ const Dashboard = () => {
 
   // Function to detect fatigue warnings for flights within 48 hours
   const detectFatigueWarnings = (flights: FlightRow[]) => {
-    const upcomingFlights = flights.filter(f => f.planned_at && new Date(f.planned_at) > new Date());
+    const upcomingFlights = flights.filter(
+      (f) => f.planned_at && new Date(f.planned_at) > new Date()
+    );
     const warnings = new Set<string>();
 
     // Sort flights by planned_at date
     upcomingFlights.sort((a, b) => {
       if (!a.planned_at || !b.planned_at) return 0;
-      return new Date(a.planned_at).getTime() - new Date(b.planned_at).getTime();
+      return (
+        new Date(a.planned_at).getTime() - new Date(b.planned_at).getTime()
+      );
     });
 
     // Check each flight against the next one
@@ -113,11 +114,11 @@ const Dashboard = () => {
 
     return warnings;
   };
-  
+
   // Validation state
   const [departureValid, setDepartureValid] = useState(false);
   const [arrivalValid, setArrivalValid] = useState(false);
-  const [intermediatesValid, setIntermediatesValid] = useState<boolean[]>([]);
+  const [intermediatesValid] = useState<boolean[]>([]);
   const [searchDepartureValid, setSearchDepartureValid] = useState(false);
   const [searchArrivalValid, setSearchArrivalValid] = useState(false);
   const navigate = useNavigate();
@@ -125,37 +126,38 @@ const Dashboard = () => {
   // Function to get user's first name from Google account
   const getUserFirstName = () => {
     if (!user) return "Pilot";
-    
+
     // Debug: Log user object to see available data
     console.log("User object:", user);
     console.log("User metadata:", user.user_metadata);
     console.log("Raw user metadata:", user.raw_user_meta_data);
-    
+
     // Try to get first name from user_metadata
     if (user.user_metadata?.full_name) {
       const fullName = user.user_metadata.full_name;
-      const firstName = fullName.split(' ')[0];
+      const firstName = fullName.split(" ")[0];
       console.log("Found first name from user_metadata:", firstName);
       return firstName || "Pilot";
     }
-    
+
     // Try to get first name from raw_user_meta_data
     if (user.raw_user_meta_data?.full_name) {
       const fullName = user.raw_user_meta_data.full_name;
-      const firstName = fullName.split(' ')[0];
+      const firstName = fullName.split(" ")[0];
       console.log("Found first name from raw_user_meta_data:", firstName);
       return firstName || "Pilot";
     }
-    
+
     // Try to get first name from email (before @)
     if (user.email) {
-      const emailName = user.email.split('@')[0];
+      const emailName = user.email.split("@")[0];
       // Convert to title case
-      const firstName = emailName.charAt(0).toUpperCase() + emailName.slice(1).toLowerCase();
+      const firstName =
+        emailName.charAt(0).toUpperCase() + emailName.slice(1).toLowerCase();
       console.log("Using email name as first name:", firstName);
       return firstName;
     }
-    
+
     console.log("No name found, using default: Pilot");
     return "Pilot";
   };
@@ -256,7 +258,6 @@ const Dashboard = () => {
     setTimeout(() => {
       // Create route string from individual inputs
       const routeParts = [dep, ...mids, arr].filter(Boolean);
-      const routeString = routeParts.join(" ");
 
       // Navigate to detail page using route string
       briefFromFlight({
@@ -373,7 +374,7 @@ const Dashboard = () => {
 
   const deleteFlight = async (id: string) => {
     setDeletingFlightId(id);
-    
+
     // Add a small delay for the animation
     setTimeout(async () => {
       try {
@@ -466,9 +467,11 @@ const Dashboard = () => {
               }`}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                  activePanel === "add" ? "bg-white/20" : "bg-gray-50"
-                }`}>
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                    activePanel === "add" ? "bg-white/20" : "bg-gray-50"
+                  }`}
+                >
                   <Equal
                     className={`w-6 h-6 ${
                       activePanel === "add" ? "text-white" : "text-gray-600"
@@ -477,9 +480,11 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <div className="text-2xl font-bold">Add Flight</div>
-                  <div className={`text-base mt-2 ${
-                    activePanel === "add" ? "text-gray-100" : "text-slate-600"
-                  }`}>
+                  <div
+                    className={`text-base mt-2 ${
+                      activePanel === "add" ? "text-gray-100" : "text-slate-600"
+                    }`}
+                  >
                     Create and save a personalized flight
                   </div>
                 </div>
@@ -494,9 +499,11 @@ const Dashboard = () => {
               }`}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                  activePanel === "search" ? "bg-white/20" : "bg-gray-50"
-                }`}>
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                    activePanel === "search" ? "bg-white/20" : "bg-gray-50"
+                  }`}
+                >
                   <Search
                     className={`w-6 h-6 ${
                       activePanel === "search" ? "text-white" : "text-gray-600"
@@ -505,9 +512,13 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <div className="text-2xl font-bold">Search Flight</div>
-                  <div className={`text-base mt-2 ${
-                    activePanel === "search" ? "text-gray-100" : "text-slate-600"
-                  }`}>
+                  <div
+                    className={`text-base mt-2 ${
+                      activePanel === "search"
+                        ? "text-gray-100"
+                        : "text-slate-600"
+                    }`}
+                  >
                     Run a one-off route briefing
                   </div>
                 </div>
@@ -708,7 +719,9 @@ const Dashboard = () => {
               <Button
                 onClick={getBriefing}
                 disabled={briefingLoading || planeAnimating}
-                className={`w-full h-11 bg-gray-800 hover:bg-black text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 plane-animation hover-lift btn-press ${planeAnimating ? 'animating' : ''}`}
+                className={`w-full h-11 bg-gray-800 hover:bg-black text-white font-medium shadow-md hover:shadow-lg transition-all duration-200 plane-animation hover-lift btn-press ${
+                  planeAnimating ? "animating" : ""
+                }`}
               >
                 {briefingLoading ? (
                   <div className="flex items-center gap-2">
@@ -763,23 +776,30 @@ const Dashboard = () => {
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {upcomingFlights.map((f) => {
-                      const fatigueWarnings = detectFatigueWarnings(upcomingFlights);
+                      const fatigueWarnings =
+                        detectFatigueWarnings(upcomingFlights);
                       const hasFatigueWarning = fatigueWarnings.has(f.id);
-                      
+
                       return (
-                        <div key={f.id} className={`group relative ${deletingFlightId === f.id ? 'delete-fade' : ''}`}>
+                        <div
+                          key={f.id}
+                          className={`group relative ${
+                            deletingFlightId === f.id ? "delete-fade" : ""
+                          }`}
+                        >
                           <button
                             onClick={() => briefFromFlight(f)}
                             className={`w-full text-left p-3 rounded-lg border shadow-lg hover-lift btn-press zoom-in ${
-                              hasFatigueWarning 
-                                ? 'bg-gradient-to-br from-red-600 to-red-800 border-red-700 hover:from-red-700 hover:to-red-900' 
-                                : 'bg-gradient-to-br from-gray-800 to-black border-gray-800 hover:from-black hover:to-gray-800'
+                              hasFatigueWarning
+                                ? "bg-gradient-to-br from-red-600 to-red-800 border-red-700 hover:from-red-700 hover:to-red-900"
+                                : "bg-gradient-to-br from-gray-800 to-black border-gray-800 hover:from-black hover:to-gray-800"
                             }`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="font-semibold text-white">
                                 {f.departure} →{" "}
-                                {[...(f.intermediates || [])].join(" ")} {f.arrival}
+                                {[...(f.intermediates || [])].join(" ")}{" "}
+                                {f.arrival}
                               </div>
                               {hasFatigueWarning && (
                                 <div className="flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
@@ -796,7 +816,11 @@ const Dashboard = () => {
                           </button>
                           <button
                             onClick={() => deleteFlight(f.id)}
-                            className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 hover-scale btn-press ${deletingFlightId === f.id ? 'delete-animation' : ''}`}
+                            className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 hover-scale btn-press ${
+                              deletingFlightId === f.id
+                                ? "delete-animation"
+                                : ""
+                            }`}
                             title="Delete"
                             aria-label="Delete upcoming flight"
                           >
@@ -819,7 +843,12 @@ const Dashboard = () => {
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {pastFlights.map((f) => (
-                      <div key={f.id} className={`group relative ${deletingFlightId === f.id ? 'delete-fade' : ''}`}>
+                      <div
+                        key={f.id}
+                        className={`group relative ${
+                          deletingFlightId === f.id ? "delete-fade" : ""
+                        }`}
+                      >
                         <button
                           onClick={() => briefFromFlight(f)}
                           className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-100 hover-lift btn-press zoom-in"
@@ -836,7 +865,9 @@ const Dashboard = () => {
                         </button>
                         <button
                           onClick={() => deleteFlight(f.id)}
-                          className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600 hover-scale btn-press ${deletingFlightId === f.id ? 'delete-animation' : ''}`}
+                          className={`absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600 hover-scale btn-press ${
+                            deletingFlightId === f.id ? "delete-animation" : ""
+                          }`}
                           title="Delete"
                           aria-label="Delete past flight"
                         >
@@ -856,7 +887,9 @@ const Dashboard = () => {
               {/* Summary */}
               <Card className="bg-white rounded-3xl border-0 shadow-xl">
                 <CardHeader className="pb-6">
-                  <CardTitle className="text-xl font-bold">Flight Summary</CardTitle>
+                  <CardTitle className="text-xl font-bold">
+                    Flight Summary
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6">
@@ -881,7 +914,10 @@ const Dashboard = () => {
                   <CardContent>
                     <div className="grid gap-4">
                       {briefing.metars.map((metar, idx) => (
-                        <div key={idx} className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-6">
+                        <div
+                          key={idx}
+                          className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-6"
+                        >
                           <div className="font-bold text-gray-600 mb-2 text-lg">
                             {metar.station}
                           </div>
@@ -909,64 +945,96 @@ const Dashboard = () => {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Least Deviation */}
-                      {briefing.alternate_categories.least_deviation && briefing.alternate_categories.least_deviation.length > 0 && (
-                        <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
-                          <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2 text-lg">
-                            <MapPin className="w-5 h-5" />
-                            Least Deviation
-                          </h4>
-                          <div className="space-y-2">
-                            {briefing.alternate_categories.least_deviation.map((airport, idx) => (
-                              <div key={idx} className="text-sm text-blue-700">
-                                <span className="font-semibold">{airport.icao}</span>
-                                {airport.name && (
-                                  <span className="ml-2 text-blue-600">- {airport.name}</span>
-                                )}
-                              </div>
-                            ))}
+                      {briefing.alternate_categories.least_deviation &&
+                        briefing.alternate_categories.least_deviation.length >
+                          0 && (
+                          <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
+                            <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2 text-lg">
+                              <MapPin className="w-5 h-5" />
+                              Least Deviation
+                            </h4>
+                            <div className="space-y-2">
+                              {briefing.alternate_categories.least_deviation.map(
+                                (airport, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="text-sm text-blue-700"
+                                  >
+                                    <span className="font-semibold">
+                                      {airport.icao}
+                                    </span>
+                                    {airport.name && (
+                                      <span className="ml-2 text-blue-600">
+                                        - {airport.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
                       {/* Best Fuel Efficiency */}
-                      {briefing.alternate_categories.best_fuel_efficiency && briefing.alternate_categories.best_fuel_efficiency.length > 0 && (
-                        <div className="bg-green-50 rounded-2xl p-6 border border-green-200">
-                          <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2 text-lg">
-                            <MapPin className="w-5 h-5" />
-                            Best Fuel Efficiency
-                          </h4>
-                          <div className="space-y-2">
-                            {briefing.alternate_categories.best_fuel_efficiency.map((airport, idx) => (
-                              <div key={idx} className="text-sm text-green-700">
-                                <span className="font-semibold">{airport.icao}</span>
-                                {airport.name && (
-                                  <span className="ml-2 text-green-600">- {airport.name}</span>
-                                )}
-                              </div>
-                            ))}
+                      {briefing.alternate_categories.best_fuel_efficiency &&
+                        briefing.alternate_categories.best_fuel_efficiency
+                          .length > 0 && (
+                          <div className="bg-green-50 rounded-2xl p-6 border border-green-200">
+                            <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2 text-lg">
+                              <MapPin className="w-5 h-5" />
+                              Best Fuel Efficiency
+                            </h4>
+                            <div className="space-y-2">
+                              {briefing.alternate_categories.best_fuel_efficiency.map(
+                                (airport, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="text-sm text-green-700"
+                                  >
+                                    <span className="font-semibold">
+                                      {airport.icao}
+                                    </span>
+                                    {airport.name && (
+                                      <span className="ml-2 text-green-600">
+                                        - {airport.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
                       {/* Safest */}
-                      {briefing.alternate_categories.safest && briefing.alternate_categories.safest.length > 0 && (
-                        <div className="bg-red-50 rounded-2xl p-6 border border-red-200">
-                          <h4 className="font-bold text-red-800 mb-4 flex items-center gap-2 text-lg">
-                            <MapPin className="w-5 h-5" />
-                            Safest
-                          </h4>
-                          <div className="space-y-2">
-                            {briefing.alternate_categories.safest.map((airport, idx) => (
-                              <div key={idx} className="text-sm text-red-700">
-                                <span className="font-semibold">{airport.icao}</span>
-                                {airport.name && (
-                                  <span className="ml-2 text-red-600">- {airport.name}</span>
-                                )}
-                              </div>
-                            ))}
+                      {briefing.alternate_categories.safest &&
+                        briefing.alternate_categories.safest.length > 0 && (
+                          <div className="bg-red-50 rounded-2xl p-6 border border-red-200">
+                            <h4 className="font-bold text-red-800 mb-4 flex items-center gap-2 text-lg">
+                              <MapPin className="w-5 h-5" />
+                              Safest
+                            </h4>
+                            <div className="space-y-2">
+                              {briefing.alternate_categories.safest.map(
+                                (airport, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="text-sm text-red-700"
+                                  >
+                                    <span className="font-semibold">
+                                      {airport.icao}
+                                    </span>
+                                    {airport.name && (
+                                      <span className="ml-2 text-red-600">
+                                        - {airport.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                     </div>
                   </CardContent>
                 </Card>

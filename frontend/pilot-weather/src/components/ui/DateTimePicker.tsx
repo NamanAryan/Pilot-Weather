@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface Props {
   value?: string;
@@ -10,12 +10,18 @@ function pad(num: number) {
   return num < 10 ? `0${num}` : String(num);
 }
 
-export default function DateTimePicker({ value, onChange, placeholder }: Props) {
+export default function DateTimePicker({
+  value,
+  onChange,
+  placeholder,
+}: Props) {
   const initial = useMemo(() => {
     if (!value) return { date: "", time: "" };
     const d = new Date(value);
     if (isNaN(d.getTime())) return { date: "", time: "" };
-    const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )}`;
     const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
     return { date, time };
   }, [value]);
@@ -27,7 +33,7 @@ export default function DateTimePicker({ value, onChange, placeholder }: Props) 
     if (date && time) {
       // Build local ISO-like string without seconds
       const [y, m, d] = date.split("-").map((s) => parseInt(s, 10));
-      const [hh, mm] = time.split(":" ).map((s) => parseInt(s, 10));
+      const [hh, mm] = time.split(":").map((s) => parseInt(s, 10));
       const dt = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0);
       if (!isNaN(dt.getTime())) {
         onChange?.(dt.toISOString());
@@ -54,5 +60,3 @@ export default function DateTimePicker({ value, onChange, placeholder }: Props) 
     </div>
   );
 }
-
-
