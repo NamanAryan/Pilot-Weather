@@ -118,7 +118,6 @@ const Dashboard = () => {
   // Validation state
   const [departureValid, setDepartureValid] = useState(false);
   const [arrivalValid, setArrivalValid] = useState(false);
-  const [, , setIntermediatesValid] = useState<boolean[]>([]);
   const [searchDepartureValid, setSearchDepartureValid] = useState(false);
   const [searchArrivalValid, setSearchArrivalValid] = useState(false);
   const navigate = useNavigate();
