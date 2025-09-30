@@ -52,8 +52,8 @@ app = FastAPI(
 # Security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
-    allowed_hosts=["*"] if os.getenv("ENVIRONMENT") == "development" else [
-        "pilot-weather-backend.onrender.com",
+    allowed_hosts=[
+        "https://pilot-weather-backend.onrender.com",
         "https://pilot-weather-frontend.vercel.app", 
         "https://www.pilot-weather-frontend.vercel.app"
     ]
@@ -62,7 +62,7 @@ app.add_middleware(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173","https://pilot-weather-frontend.vercel.app"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
