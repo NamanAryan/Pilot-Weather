@@ -39,7 +39,7 @@ from services.airports import get_airport_info
 from services.summary import summarize_weather
 
 # Get allowed origins from environment
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,https://pilot-weather-frontend.vercel.app,https://www.pilot-weather-frontend.vercel.app").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,https://pilot-weather-frontend.vercel.app,https://www.pilot-weather-frontend.vercel.app,https://weathaware.vercel.app,https://www.weathaware.vercel.app").split(",")
 
 app = FastAPI(
     title="Aviation Pre-Flight Assistant",
@@ -62,13 +62,14 @@ app.add_middleware(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173","https://weathaware.vercel.app","https://www.weathaware.vercel.app","https://pilot-weather-backend.onrender.com"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"],
     allow_headers=["*"],
 )
 
 @app.get("/")
+@app.head("/")
 def health():
     """Health check endpoint"""
     return {
