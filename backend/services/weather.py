@@ -13,6 +13,49 @@ print(f"🔑 AVWX_TOKEN: {AVWX_TOKEN}")
 
 headers = {"Authorization": f"Bearer {AVWX_TOKEN}"} if AVWX_TOKEN else {}
 
+def check_avwx_permissions():
+    """Check what AVWX API endpoints are accessible with current token"""
+    if not AVWX_TOKEN:
+        print("⚠️ No AVWX token configured")
+        return
+    
+    print("🔍 Checking AVWX API permissions...")
+    
+    # Test basic METAR access (should work with any valid token)
+    try:
+        test_url = f"{AVWX_BASE}/metar/KJFK"
+        r = requests.get(test_url, headers=headers, timeout=5)
+        if r.status_code == 200:
+            print("✅ METAR access: OK")
+        else:
+            print(f"❌ METAR access: {r.status_code}")
+    except Exception as e:
+        print(f"❌ METAR test failed: {e}")
+    
+    # Test NOTAM access
+    try:
+        test_url = f"{AVWX_BASE}/notam/KJFK"
+        r = requests.get(test_url, headers=headers, timeout=5)
+        if r.status_code == 200:
+            print("✅ NOTAM access: OK")
+        elif r.status_code == 403:
+            print("🚫 NOTAM access: DENIED (403) - requires paid plan")
+        else:
+            print(f"❌ NOTAM access: {r.status_code}")
+    except Exception as e:
+        print(f"❌ NOTAM test failed: {e}")
+    
+    # Test TAF access
+    try:
+        test_url = f"{AVWX_BASE}/taf/KJFK"
+        r = requests.get(test_url, headers=headers, timeout=5)
+        if r.status_code == 200:
+            print("✅ TAF access: OK")
+        else:
+            print(f"❌ TAF access: {r.status_code}")
+    except Exception as e:
+        print(f"❌ TAF test failed: {e}")
+
 def fetch_metar(icao: str) -> Metar:
     if not AVWX_TOKEN:
         raise Exception(f"AVWX_TOKEN not configured - cannot fetch real weather data for {icao}")
@@ -31,9 +74,19 @@ def fetch_metar(icao: str) -> Metar:
     print(f"📄 METAR Data Type: {type(data)}")
     print(f"📄 METAR Data: {data}")
     
-    # Handle both dict and list responses
-    if isinstance(data, list):
+    # Handle empty or invalid responses
+    if data is None:
+        print(f"⚠️ Empty METAR response for {icao}")
+        data = {}
+    elif isinstance(data, list):
         data = data[0] if data else {}
+    elif not isinstance(data, dict):
+        print(f"⚠️ Unexpected METAR data type for {icao}: {type(data)}")
+        data = {}
+    
+    # Ensure data is a dict, not None
+    if data is None:
+        data = {}
     
     return Metar(
         station=icao,
@@ -62,9 +115,19 @@ def fetch_taf(icao: str) -> Taf:
     print(f"📄 TAF Data Type: {type(data)}")
     print(f"📄 TAF Data: {data}")
     
-    # Handle both dict and list responses
-    if isinstance(data, list):
+    # Handle empty or invalid responses
+    if data is None:
+        print(f"⚠️ Empty TAF response for {icao}")
+        data = {}
+    elif isinstance(data, list):
         data = data[0] if data else {}
+    elif not isinstance(data, dict):
+        print(f"⚠️ Unexpected TAF data type for {icao}: {type(data)}")
+        data = {}
+    
+    # Ensure data is a dict, not None
+    if data is None:
+        data = {}
     
     # Safe extraction for TAF data
     raw_text = ""
@@ -90,6 +153,7 @@ def fetch_taf(icao: str) -> Taf:
 
 def fetch_notams(icao: str) -> list[Notam]:
     if not AVWX_TOKEN:
+        print("⚠️ No AVWX token configured - skipping NOTAMs")
         return []  # NOTAMs are optional
     
     try:
@@ -99,8 +163,16 @@ def fetch_notams(icao: str) -> list[Notam]:
         
         print(f"📊 NOTAM Response Status: {r.status_code}")
         
-        if r.status_code != 200:
-            print(f"❌ NOTAM API Error: {r.text}")
+        if r.status_code == 403:
+            print(f"🚫 NOTAM Access Denied (403) for {icao}")
+            print("💡 This usually means your AVWX plan doesn't include NOTAM access")
+            print("💡 NOTAMs require a paid AVWX subscription plan")
+            return []
+        elif r.status_code == 404:
+            print(f"📭 No NOTAMs found for {icao}")
+            return []
+        elif r.status_code != 200:
+            print(f"❌ NOTAM API Error {r.status_code} for {icao}: {r.text}")
             return []
         
         data = r.json()

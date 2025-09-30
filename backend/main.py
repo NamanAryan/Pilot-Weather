@@ -26,13 +26,16 @@ logger.info(f"   GEMINI_API_KEY: {'✅' if os.getenv('GEMINI_API_KEY') else '❌
 logger.info(f"   SUPABASE_URL: {'✅' if os.getenv('SUPABASE_URL') else '❌ MISSING'}")
 logger.info(f"   SUPABASE_ANON_KEY: {'✅' if os.getenv('SUPABASE_ANON_KEY') else '❌ MISSING'}")
 
+# Check AVWX API permissions
+check_avwx_permissions()
+
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from models.route import RouteRequest
 from models.response import RouteAnalysisResponse
-from services.weather import fetch_metar, fetch_taf, fetch_notams, fetch_pireps
+from services.weather import fetch_metar, fetch_taf, fetch_notams, fetch_pireps, check_avwx_permissions
 from services.route import fetch_route, map_hazards
 from services.airports import get_alternate_airports, get_top3_alternate_airports_by_category
 from services.airports import get_airport_info
@@ -377,7 +380,24 @@ def analyze_route(req: RouteRequest):
                 print(f"✅ Got weather for {code}")
             except Exception as e:
                 print(f"❌ Weather error for {code}: {e}")
-                raise e
+                # Create fallback weather objects instead of failing completely
+                from models.weather import Metar, Taf
+                fallback_metar = Metar(
+                    station=code,
+                    raw_text=f"Weather data unavailable for {code}: {str(e)}",
+                    temperature=None,
+                    wind=None,
+                    visibility=None,
+                    conditions=None
+                )
+                fallback_taf = Taf(
+                    station=code,
+                    raw_text=f"TAF unavailable for {code}: {str(e)}",
+                    forecast=""
+                )
+                metars.append(fallback_metar)
+                tafs.append(fallback_taf)
+                print(f"⚠️ Using fallback weather data for {code}")
         
         print("📢 Fetching NOTAMs...")
         notams = []
