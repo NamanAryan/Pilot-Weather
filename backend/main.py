@@ -119,23 +119,23 @@ def airport_info(codes: str | None = None):
             results.append({"icao": raw.upper(), "name": None})
     return results
 
-@app.get("/airports/search")
-def search_airports(q: str = ""):
-    """Search airports by ICAO code or name for autocomplete.
+# Global cache for airports data
+_airports_cache = None
+_airports_index = None
+_search_results_cache = {}  # Simple cache for search results
+
+def _load_airports_data():
+    """Load airports data into memory cache with search indexes."""
+    global _airports_cache, _airports_index
     
-    Returns: List of {icao, name, city, country} objects
-    """
-    print(f"🔍 Airport search request: '{q}'")
-    if not q or len(q) < 2:
-        print("❌ Query too short")
-        return []
+    if _airports_cache is not None:
+        return _airports_cache, _airports_index
     
     import csv
     import os
     import requests
     from io import StringIO
     
-    results = []
     airports_file = os.path.join(os.path.dirname(__file__), "data", "airports.csv")
     
     try:
@@ -163,10 +163,15 @@ def search_airports(q: str = ""):
             airports_data = list(reader)
             print(f"✅ Downloaded {len(airports_data)} airports")
         
-        # Search through airports data
+        # Process and index airports data
+        processed_airports = []
+        icao_index = {}
+        name_index = {}
+        city_index = {}
+        
         for row in airports_data:
             icao = row.get('icao_code', '').strip()
-            ident = row.get('ident', '').strip()  # Use ident as fallback
+            ident = row.get('ident', '').strip()
             name = row.get('name', '').strip()
             city = row.get('municipality', '').strip()
             country = row.get('iso_country', '').strip()
@@ -178,26 +183,156 @@ def search_airports(q: str = ""):
             if not airport_code:
                 continue
             
-            # Search in airport code, name, or city
-            search_text = f"{airport_code} {name} {city}".lower()
-            if q.lower() in search_text:
-                results.append({
-                    "icao": airport_code,
-                    "name": name,
-                    "city": city,
-                    "country": country
-                })
-                
-                # Limit results to 20 for performance
-                if len(results) >= 20:
-                    break
-                    
+            airport_obj = {
+                "icao": airport_code,
+                "name": name,
+                "city": city,
+                "country": country
+            }
+            
+            processed_airports.append(airport_obj)
+            
+            # Build indexes for faster searching
+            code_lower = airport_code.lower()
+            name_lower = name.lower()
+            city_lower = city.lower()
+            
+            # ICAO code index
+            icao_index[code_lower] = airport_obj
+            
+            # Name index (first few characters)
+            for i in range(1, min(len(name_lower) + 1, 10)):
+                prefix = name_lower[:i]
+                if prefix not in name_index:
+                    name_index[prefix] = []
+                name_index[prefix].append(airport_obj)
+            
+            # City index (first few characters)
+            for i in range(1, min(len(city_lower) + 1, 10)):
+                prefix = city_lower[:i]
+                if prefix not in city_index:
+                    city_index[prefix] = []
+                city_index[prefix].append(airport_obj)
+        
+        _airports_cache = processed_airports
+        _airports_index = {
+            'icao': icao_index,
+            'name': name_index,
+            'city': city_index
+        }
+        
+        print(f"✅ Loaded {len(processed_airports)} airports into cache with indexes")
+        return _airports_cache, _airports_index
+        
     except Exception as e:
-        print(f"❌ Error reading airports data: {e}")
+        print(f"❌ Error loading airports data: {e}")
+        return [], {}
+
+@app.get("/airports/search")
+def search_airports(q: str = ""):
+    """Search airports by ICAO code or name for autocomplete.
+    
+    Returns: List of {icao, name, city, country} objects
+    """
+    print(f"🔍 Airport search request: '{q}'")
+    if not q or len(q) < 2:
+        print("❌ Query too short")
+        return []
+    
+    q_lower = q.lower().strip()
+    
+    # Check cache first
+    if q_lower in _search_results_cache:
+        print(f"✅ Cache hit for query '{q}'")
+        return _search_results_cache[q_lower]
+    
+    # Load airports data (cached after first load)
+    airports_data, airports_index = _load_airports_data()
+    
+    if not airports_data:
+        return []
+    
+    results = []
+    
+    try:
+        # Priority 1: Exact ICAO code match
+        if q_lower in airports_index['icao']:
+            exact_match = airports_index['icao'][q_lower]
+            results.append(exact_match)
+        
+        # Priority 2: ICAO code prefix matches
+        for code, airport in airports_index['icao'].items():
+            if code.startswith(q_lower) and airport not in results:
+                results.append(airport)
+                if len(results) >= 10:  # Limit ICAO matches
+                    break
+        
+        # Priority 3: Name prefix matches
+        if len(results) < 15:  # Leave room for other matches
+            for prefix_length in range(len(q_lower), 0, -1):
+                prefix = q_lower[:prefix_length]
+                if prefix in airports_index['name']:
+                    for airport in airports_index['name'][prefix]:
+                        if airport not in results:
+                            results.append(airport)
+                            if len(results) >= 15:
+                                break
+                    if len(results) >= 15:
+                        break
+        
+        # Priority 4: City prefix matches
+        if len(results) < 20:  # Leave room for other matches
+            for prefix_length in range(len(q_lower), 0, -1):
+                prefix = q_lower[:prefix_length]
+                if prefix in airports_index['city']:
+                    for airport in airports_index['city'][prefix]:
+                        if airport not in results:
+                            results.append(airport)
+                            if len(results) >= 20:
+                                break
+                    if len(results) >= 20:
+                        break
+        
+        # Priority 5: Fallback to substring search for remaining slots
+        if len(results) < 20:
+            for airport in airports_data:
+                if airport in results:
+                    continue
+                
+                search_text = f"{airport['icao']} {airport['name']} {airport['city']}".lower()
+                if q_lower in search_text:
+                    results.append(airport)
+                    if len(results) >= 20:
+                        break
+        
+        # Sort results by relevance (exact ICAO matches first, then by name length)
+        def sort_key(airport):
+            code_match = airport['icao'].lower() == q_lower
+            prefix_match = airport['icao'].lower().startswith(q_lower)
+            name_match = airport['name'].lower().startswith(q_lower)
+            
+            if code_match:
+                return (0, len(airport['name']))
+            elif prefix_match:
+                return (1, len(airport['name']))
+            elif name_match:
+                return (2, len(airport['name']))
+            else:
+                return (3, len(airport['name']))
+        
+        results.sort(key=sort_key)
+        
+    except Exception as e:
+        print(f"❌ Error searching airports: {e}")
         return []
     
     print(f"✅ Found {len(results)} airports for query '{q}'")
-    return results
+    
+    # Cache the results (limit cache size to prevent memory issues)
+    if len(_search_results_cache) < 1000:  # Limit cache to 1000 entries
+        _search_results_cache[q_lower] = results[:20]
+    
+    return results[:20]  # Limit to 20 results
 
 @app.post("/analyze-route", response_model=RouteAnalysisResponse)
 def analyze_route(req: RouteRequest):

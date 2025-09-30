@@ -62,7 +62,7 @@ export function AirportAutocomplete({
       } finally {
         setIsLoading(false);
       }
-    }, 300);
+    }, 150); // Reduced from 300ms to 150ms for faster response
 
     return () => clearTimeout(timeoutId);
   }, [value, onValidationChange]);
