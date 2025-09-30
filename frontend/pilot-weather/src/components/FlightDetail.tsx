@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { API_ENDPOINTS } from "../config";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
@@ -1113,13 +1112,13 @@ export default function FlightDetail() {
     };
     if (id || search.get("route")) load();
   }, [id, search]);
-
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
   useEffect(() => {
     const loadNames = async () => {
       if (!route) return;
       try {
         const resp = await fetch(
-          `http://localhost:8000/airport-info?codes=${encodeURIComponent(
+          `${apiBaseUrl}/airport-info?codes=${encodeURIComponent(
             route
           )}`
         );
@@ -1148,7 +1147,7 @@ export default function FlightDetail() {
       (window as any).__briefingRouteLoaded = false;
       (window as any).__briefingRouteError = undefined;
       const airports = route.trim().split(/\s+/);
-      const response = await fetch("http://localhost:8000/analyze-route", {
+      const response = await fetch(`${apiBaseUrl}/analyze-route`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ airports }),

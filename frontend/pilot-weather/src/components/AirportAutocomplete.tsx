@@ -33,6 +33,7 @@ export function AirportAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
   // Debounced search
   useEffect(() => {
     if (value.length < 2) {
@@ -45,7 +46,9 @@ export function AirportAutocomplete({
     const timeoutId = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`https://pilot-weather-frontend.vercel.app/airports/search?q=${encodeURIComponent(value)}`);
+        const response = await fetch(
+          `${apiBaseUrl}/airports/search?q=${encodeURIComponent(value)}`
+        );
         const data = await response.json();
         console.log(`✅ Found ${data.length} airports:`, data);
 
