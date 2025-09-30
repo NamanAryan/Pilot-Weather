@@ -54,15 +54,15 @@ app.add_middleware(
     TrustedHostMiddleware, 
     allowed_hosts=[
         "pilot-weather-backend.onrender.com",
-        "pilot-weather-frontend.vercel.app", 
-        "www.pilot-weather-frontend.vercel.app"
+        "weathaware.vercel.app", 
+        "www.weathaware.vercel.app"
     ]
 )
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173","https://pilot-weather-frontend.vercel.app","https://www.pilot-weather-frontend.vercel.app","https://pilot-weather-backend.onrender.com"],
+    allow_origins=["http://localhost:5173","https://weathaware.vercel.app","https://www.weathaware.vercel.app","https://pilot-weather-backend.onrender.com"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
