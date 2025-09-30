@@ -62,7 +62,7 @@ app.add_middleware(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173","https://pilot-weather-frontend.vercel.app"],
+    allow_origins=["http://localhost:5173","https://pilot-weather-frontend.vercel.app","https://www.pilot-weather-frontend.vercel.app","https://pilot-weather-backend.onrender.com"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
