@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { API_ENDPOINTS } from "../config";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useToast } from "../hooks/use-toast";
@@ -14,7 +15,6 @@ import {
   Briefcase,
   AlertTriangle,
 } from "lucide-react";
-// Simple tab implementation without external dependencies
 
 interface Briefing {
   summary_5line: string;
@@ -183,33 +183,35 @@ function summarizeMetar(metar: Metar): string {
 function hasThunderstorm(metar: Metar): boolean {
   if (!metar || !metar.raw_text) return false;
   const rawText = metar.raw_text.toUpperCase();
-  
+
   // More comprehensive thunderstorm detection
   const thunderstormIndicators = [
-    "TS",           // Thunderstorm
+    "TS", // Thunderstorm
     "THUNDERSTORM", // Full word
-    "TEMPO",        // Temporary conditions
-    "TSRA",         // Thunderstorm with rain
-    "TSSN",         // Thunderstorm with snow
-    "TSGR",         // Thunderstorm with hail
-    "TSGS",         // Thunderstorm with small hail
-    "CB",           // Cumulonimbus clouds
-    "TCU",          // Towering cumulus
-    "FC",           // Funnel cloud
-    "TORNADO",      // Tornado
-    "WATERSPOUT"    // Waterspout
+    "TEMPO", // Temporary conditions
+    "TSRA", // Thunderstorm with rain
+    "TSSN", // Thunderstorm with snow
+    "TSGR", // Thunderstorm with hail
+    "TSGS", // Thunderstorm with small hail
+    "CB", // Cumulonimbus clouds
+    "TCU", // Towering cumulus
+    "FC", // Funnel cloud
+    "TORNADO", // Tornado
+    "WATERSPOUT", // Waterspout
   ];
-  
-  const hasThunderstorm = thunderstormIndicators.some(indicator => 
+
+  const hasThunderstorm = thunderstormIndicators.some((indicator) =>
     rawText.includes(indicator)
   );
-  
+
   console.log(`Thunderstorm check for ${metar.station}:`, {
     rawText,
     hasThunderstorm,
-    indicators: thunderstormIndicators.filter(indicator => rawText.includes(indicator))
+    indicators: thunderstormIndicators.filter((indicator) =>
+      rawText.includes(indicator)
+    ),
   });
-  
+
   return hasThunderstorm;
 }
 
@@ -395,7 +397,7 @@ function RouteMap({
           console.log(`Checking thunderstorm for ${code}:`, {
             metar: metar,
             raw_text: metar?.raw_text,
-            hasThunderstorm: metar ? hasThunderstorm(metar) : false
+            hasThunderstorm: metar ? hasThunderstorm(metar) : false,
           });
           if (metar && hasThunderstorm(metar)) {
             const thunderstormPolygon = generateThunderstormPolygon(
@@ -467,7 +469,6 @@ function RouteMap({
         if (coords.length >= 2) {
           // Always connect the actual airport coordinates
           L.polyline(coords, { color: "#ec4899", weight: 3 }).addTo(map);
-
 
           const group = L.featureGroup(coords.map((c) => L.marker(c)));
           map.fitBounds(group.getBounds().pad(0.2));
@@ -1033,15 +1034,15 @@ export default function FlightDetail() {
       if (error || !flights) return null;
 
       // Find the current flight
-      const currentFlight = flights.find(f => f.id === flightId);
+      const currentFlight = flights.find((f) => f.id === flightId);
       if (!currentFlight || !currentFlight.planned_at) return null;
 
       // Check if there's a previous flight within 48 hours
       const currentTime = new Date(currentFlight.planned_at).getTime();
-      
+
       for (const otherFlight of flights) {
         if (otherFlight.id === flightId || !otherFlight.planned_at) continue;
-        
+
         const otherTime = new Date(otherFlight.planned_at).getTime();
         const timeDifference = Math.abs(currentTime - otherTime);
         const hoursDifference = timeDifference / (1000 * 60 * 60);
@@ -1049,7 +1050,9 @@ export default function FlightDetail() {
         if (hoursDifference <= 48) {
           return {
             fatigue_warning: true,
-            fatigue_reason: `Flight scheduled within 48 hours of another flight (${Math.round(hoursDifference)} hours apart)`
+            fatigue_reason: `Flight scheduled within 48 hours of another flight (${Math.round(
+              hoursDifference
+            )} hours apart)`,
           };
         }
       }
@@ -1116,7 +1119,7 @@ export default function FlightDetail() {
       if (!route) return;
       try {
         const resp = await fetch(
-          `https://pilot-weather-frontend.vercel.app/airport-info?codes=${encodeURIComponent(
+          `http://localhost:8000/airport-info?codes=${encodeURIComponent(
             route
           )}`
         );
@@ -1145,7 +1148,7 @@ export default function FlightDetail() {
       (window as any).__briefingRouteLoaded = false;
       (window as any).__briefingRouteError = undefined;
       const airports = route.trim().split(/\s+/);
-      const response = await fetch("https://pilot-weather-frontend.vercel.app/analyze-route", {
+      const response = await fetch("http://localhost:8000/analyze-route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ airports }),
@@ -1163,7 +1166,7 @@ export default function FlightDetail() {
           "No OpenSky track found for this route in the recent time window.";
       }
       (window as any).__briefingRouteLoaded = true;
-      
+
       // Add fatigue warning if this is a saved flight
       let briefingWithFatigue = data;
       if (id && id !== "route") {
@@ -1172,11 +1175,11 @@ export default function FlightDetail() {
           briefingWithFatigue = {
             ...data,
             fatigue_warning: fatigueWarning.fatigue_warning,
-            fatigue_reason: fatigueWarning.fatigue_reason
+            fatigue_reason: fatigueWarning.fatigue_reason,
           };
         }
       }
-      
+
       setBriefing(briefingWithFatigue);
       setLastRefreshedAt(new Date().toISOString());
       toast({ title: "Refreshed", description: "Latest briefing loaded" });
@@ -1281,11 +1284,11 @@ export default function FlightDetail() {
                   alt="Loading weather data..."
                   className="loading-gif"
                   style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    boxShadow: 'none',
-                    filter: 'none'
+                    backgroundColor: "transparent",
+                    border: "none",
+                    outline: "none",
+                    boxShadow: "none",
+                    filter: "none",
                   }}
                 />
               </div>
@@ -1384,7 +1387,7 @@ export default function FlightDetail() {
                           This flight may pose a fatigue risk
                         </p>
                       </div>
-                      
+
                       <div className="bg-red-50 rounded-xl p-4 border border-red-200">
                         <p className="text-red-800 font-semibold text-base mb-2">
                           Schedule Conflict Details:
@@ -1393,14 +1396,16 @@ export default function FlightDetail() {
                           {briefing.fatigue_reason}
                         </p>
                       </div>
-                      
+
                       <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
                         <p className="text-amber-800 font-semibold text-sm mb-2">
                           💡 Safety Recommendation:
                         </p>
                         <p className="text-amber-700 text-sm leading-relaxed">
-                          Consider rescheduling this flight or ensuring adequate rest periods between flights. 
-                          Fatigue can significantly impact flight safety and decision-making abilities.
+                          Consider rescheduling this flight or ensuring adequate
+                          rest periods between flights. Fatigue can
+                          significantly impact flight safety and decision-making
+                          abilities.
                         </p>
                       </div>
                     </div>
@@ -1482,11 +1487,19 @@ export default function FlightDetail() {
                         <div className="space-y-1">
                           <div className="text-sm text-blue-700">
                             <span className="font-medium">
-                              {briefing.alternate_categories_single.least_deviation.icao}
+                              {
+                                briefing.alternate_categories_single
+                                  .least_deviation.icao
+                              }
                             </span>
-                            {briefing.alternate_categories_single.least_deviation.name && (
+                            {briefing.alternate_categories_single
+                              .least_deviation.name && (
                               <span className="ml-2 text-blue-600">
-                                - {briefing.alternate_categories_single.least_deviation.name}
+                                -{" "}
+                                {
+                                  briefing.alternate_categories_single
+                                    .least_deviation.name
+                                }
                               </span>
                             )}
                           </div>
@@ -1495,7 +1508,8 @@ export default function FlightDetail() {
                     )}
 
                     {/* Best Fuel Efficiency */}
-                    {briefing.alternate_categories_single.best_fuel_efficiency && (
+                    {briefing.alternate_categories_single
+                      .best_fuel_efficiency && (
                       <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                         <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
                           <MapPin className="w-4 h-4" />
@@ -1504,11 +1518,19 @@ export default function FlightDetail() {
                         <div className="space-y-1">
                           <div className="text-sm text-green-700">
                             <span className="font-medium">
-                              {briefing.alternate_categories_single.best_fuel_efficiency.icao}
+                              {
+                                briefing.alternate_categories_single
+                                  .best_fuel_efficiency.icao
+                              }
                             </span>
-                            {briefing.alternate_categories_single.best_fuel_efficiency.name && (
+                            {briefing.alternate_categories_single
+                              .best_fuel_efficiency.name && (
                               <span className="ml-2 text-green-600">
-                                - {briefing.alternate_categories_single.best_fuel_efficiency.name}
+                                -{" "}
+                                {
+                                  briefing.alternate_categories_single
+                                    .best_fuel_efficiency.name
+                                }
                               </span>
                             )}
                           </div>
@@ -1528,9 +1550,14 @@ export default function FlightDetail() {
                             <span className="font-medium">
                               {briefing.alternate_categories_single.safest.icao}
                             </span>
-                            {briefing.alternate_categories_single.safest.name && (
+                            {briefing.alternate_categories_single.safest
+                              .name && (
                               <span className="ml-2 text-red-600">
-                                - {briefing.alternate_categories_single.safest.name}
+                                -{" "}
+                                {
+                                  briefing.alternate_categories_single.safest
+                                    .name
+                                }
                               </span>
                             )}
                           </div>

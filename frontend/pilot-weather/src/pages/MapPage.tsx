@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { API_ENDPOINTS } from "../config";
 
 type AirportInfo = {
   icao: string;
@@ -14,25 +15,34 @@ type Metar = { station: string; raw_text: string };
 function hasThunderstorm(metar: Metar): boolean {
   if (!metar || !metar.raw_text) return false;
   const rawText = metar.raw_text.toUpperCase();
-  return rawText.includes("TS") || rawText.includes("THUNDERSTORM") || rawText.includes("TEMPO");
+  return (
+    rawText.includes("TS") ||
+    rawText.includes("THUNDERSTORM") ||
+    rawText.includes("TEMPO")
+  );
 }
 
 // Function to generate thunderstorm polygon coordinates around an airport
-function generateThunderstormPolygon(lat: number, lon: number, radiusKm: number = 25): Array<[number, number]> {
+function generateThunderstormPolygon(
+  lat: number,
+  lon: number,
+  radiusKm: number = 25
+): Array<[number, number]> {
   const points: Array<[number, number]> = [];
   const numPoints = 12; // Number of points to create a circular polygon
-  
+
   for (let i = 0; i < numPoints; i++) {
     const angle = (i * 360) / numPoints;
     const radians = (angle * Math.PI) / 180;
-    
+
     // Convert km to degrees (approximate)
     const latOffset = (radiusKm / 111) * Math.cos(radians);
-    const lonOffset = (radiusKm / (111 * Math.cos(lat * Math.PI / 180))) * Math.sin(radians);
-    
+    const lonOffset =
+      (radiusKm / (111 * Math.cos((lat * Math.PI) / 180))) * Math.sin(radians);
+
     points.push([lat + latOffset, lon + lonOffset]);
   }
-  
+
   return points;
 }
 
@@ -96,7 +106,7 @@ export default function MapPage() {
     if (!codes) return;
     (async () => {
       const resp = await fetch(
-        `http://localhost:8000/airport-info?codes=${encodeURIComponent(codes)}`
+        `${API_ENDPOINTS.AIRPORT_INFO}?codes=${encodeURIComponent(codes)}`
       );
       const list: AirportInfo[] = await resp.json();
       setAirports(list.filter((a) => a.latitude_deg && a.longitude_deg));
@@ -104,7 +114,7 @@ export default function MapPage() {
       // Fetch METARs in parallel using existing backend analyze for raw parsing
       try {
         const arr = codes.split(/\s+/).filter(Boolean);
-        const res = await fetch("http://localhost:8000/analyze-route", {
+        const res = await fetch(API_ENDPOINTS.ANALYZE_ROUTE, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ airports: arr }),
@@ -153,25 +163,25 @@ export default function MapPage() {
       // Check for thunderstorms and add red polygon if present
       if (metar && hasThunderstorm(metar)) {
         const thunderstormPolygon = generateThunderstormPolygon(
-          a.latitude_deg!, 
-          a.longitude_deg!, 
+          a.latitude_deg!,
+          a.longitude_deg!,
           25 // 25km radius
         );
-        
+
         const polygon = L.polygon(thunderstormPolygon, {
-          color: '#dc2626', // Red color
+          color: "#dc2626", // Red color
           weight: 2,
           opacity: 0.8,
-          fillColor: '#dc2626',
-          fillOpacity: 0.3
+          fillColor: "#dc2626",
+          fillOpacity: 0.3,
         });
-        
+
         polygon.bindTooltip(`⚠️ Thunderstorm Activity at ${a.icao}`, {
           direction: "center",
           className: "thunderstorm-tooltip",
-          permanent: false
+          permanent: false,
         });
-        
+
         polygon.bindPopup(
           `
           <div style="font-family: Arial, sans-serif; max-width: 300px;">
@@ -186,7 +196,7 @@ export default function MapPage() {
             className: "thunderstorm-popup",
           }
         );
-        
+
         polygon.addTo(map);
       }
 
@@ -207,7 +217,10 @@ export default function MapPage() {
 
     // Draw route line connecting airports
     if (airports.length >= 2) {
-      const routeCoords = airports.map((a) => [a.latitude_deg!, a.longitude_deg!]);
+      const routeCoords = airports.map((a) => [
+        a.latitude_deg!,
+        a.longitude_deg!,
+      ]);
       L.polyline(routeCoords, { color: "#ec4899", weight: 3 }).addTo(map);
     }
 
@@ -257,19 +270,24 @@ export default function MapPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-700 transition-colors bg-white px-4 py-2 rounded-xl shadow-sm hover-lift btn-press"
           >
             ← Back
           </Link>
-          <div className="text-sm text-slate-600 bg-white px-4 py-2 rounded-xl shadow-sm">Map View</div>
+          <div className="text-sm text-slate-600 bg-white px-4 py-2 rounded-xl shadow-sm">
+            Map View
+          </div>
         </div>
 
         <div className="bg-white rounded-3xl border-0 shadow-xl p-6 card-hover">
           <div className="text-sm text-slate-600 mb-4">
-            Provide your route in the URL as <code className="bg-slate-100 px-2 py-1 rounded-lg font-mono">?route=KJFK EGLL LFPG</code>.
-            Example:{" "}
+            Provide your route in the URL as{" "}
+            <code className="bg-slate-100 px-2 py-1 rounded-lg font-mono">
+              ?route=KJFK EGLL LFPG
+            </code>
+            . Example:{" "}
             <Link
               className="text-gray-600 hover:text-gray-700 transition-colors font-medium link-hover"
               to={`/map?route=${encodeURIComponent(example)}`}

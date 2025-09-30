@@ -1,14 +1,35 @@
 from dotenv import load_dotenv
 import os
+import logging
+from typing import List
 
 load_dotenv()
 
-print("🔧 Environment Check:")
-print(f"   AVWX_TOKEN: {'✅' if os.getenv('AVWX_TOKEN') else '❌ MISSING'}")
-print(f"   GEMINI_API_KEY: {'✅' if os.getenv('GEMINI_API_KEY') else '❌ MISSING'}")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, HTTPException
+# Environment validation
+required_env_vars = ["AVWX_TOKEN", "GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY"]
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+
+if missing_vars:
+    logger.warning(f"Missing environment variables: {', '.join(missing_vars)}")
+    logger.warning("Some features may not work properly")
+
+logger.info("🔧 Environment Check:")
+logger.info(f"   AVWX_TOKEN: {'✅' if os.getenv('AVWX_TOKEN') else '❌ MISSING'}")
+logger.info(f"   GEMINI_API_KEY: {'✅' if os.getenv('GEMINI_API_KEY') else '❌ MISSING'}")
+logger.info(f"   SUPABASE_URL: {'✅' if os.getenv('SUPABASE_URL') else '❌ MISSING'}")
+logger.info(f"   SUPABASE_ANON_KEY: {'✅' if os.getenv('SUPABASE_ANON_KEY') else '❌ MISSING'}")
+
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from models.route import RouteRequest
 from models.response import RouteAnalysisResponse
 from services.weather import fetch_metar, fetch_taf, fetch_notams, fetch_pireps
@@ -17,22 +38,59 @@ from services.airports import get_alternate_airports, get_top3_alternate_airport
 from services.airports import get_airport_info
 from services.summary import summarize_weather
 
-app = FastAPI(title="Aviation Pre-Flight Assistant")
+# Get allowed origins from environment
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,https://pilot-weather-frontend.vercel.app,https://www.pilot-weather-frontend.vercel.app").split(",")
 
+app = FastAPI(
+    title="Aviation Pre-Flight Assistant",
+    description="AI-powered weather briefing and hazard analysis system for pilots",
+    version="1.0.0",
+    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None
+)
+
+# Security middleware
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["*"] if os.getenv("ENVIRONMENT") == "development" else [
+        "pilot-weather-backend.onrender.com",
+        "https://pilot-weather-frontend.vercel.app", 
+        "https://www.pilot-weather-frontend.vercel.app"
+    ]
+)
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://pilot-weather-frontend.vercel.app", "https://www.pilot-weather-frontend.vercel.app"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
 @app.get("/")
 def health():
+    """Health check endpoint"""
     return {
         "status": "ok", 
+        "service": "Aviation Pre-Flight Assistant",
+        "version": "1.0.0",
         "avwx_configured": bool(os.getenv("AVWX_TOKEN")),
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY"))
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "supabase_configured": bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_ANON_KEY"))
+    }
+
+@app.get("/health")
+def detailed_health():
+    """Detailed health check for monitoring"""
+    return {
+        "status": "healthy",
+        "timestamp": "2024-01-01T00:00:00Z",  # This would be dynamic in real implementation
+        "services": {
+            "avwx": "configured" if os.getenv("AVWX_TOKEN") else "missing",
+            "gemini": "configured" if os.getenv("GEMINI_API_KEY") else "missing",
+            "supabase": "configured" if os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_ANON_KEY") else "missing"
+        }
     }
 
 
@@ -67,46 +125,78 @@ def search_airports(q: str = ""):
     
     Returns: List of {icao, name, city, country} objects
     """
+    print(f"🔍 Airport search request: '{q}'")
     if not q or len(q) < 2:
+        print("❌ Query too short")
         return []
     
     import csv
     import os
+    import requests
+    from io import StringIO
     
     results = []
     airports_file = os.path.join(os.path.dirname(__file__), "data", "airports.csv")
     
     try:
-        with open(airports_file, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                icao = row.get('icao_code', '').strip()
-                name = row.get('name', '').strip()
-                city = row.get('municipality', '').strip()
-                country = row.get('iso_country', '').strip()
+        # Try to load from local file first
+        if os.path.exists(airports_file):
+            with open(airports_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                airports_data = list(reader)
+        else:
+            # Download from OurAirports if local file doesn't exist
+            print("🌐 Downloading airports data from OurAirports...")
+            url = "https://davidmegginson.github.io/ourairports-data/airports.csv"
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+            
+            # Create data directory if it doesn't exist
+            os.makedirs(os.path.dirname(airports_file), exist_ok=True)
+            
+            # Save to local file for future use
+            with open(airports_file, 'w', encoding='utf-8') as f:
+                f.write(response.text)
+            
+            # Parse the CSV data
+            reader = csv.DictReader(StringIO(response.text))
+            airports_data = list(reader)
+            print(f"✅ Downloaded {len(airports_data)} airports")
+        
+        # Search through airports data
+        for row in airports_data:
+            icao = row.get('icao_code', '').strip()
+            ident = row.get('ident', '').strip()  # Use ident as fallback
+            name = row.get('name', '').strip()
+            city = row.get('municipality', '').strip()
+            country = row.get('iso_country', '').strip()
+            
+            # Use ICAO code if available, otherwise use ident
+            airport_code = icao if icao else ident
+            
+            # Only include airports with codes
+            if not airport_code:
+                continue
+            
+            # Search in airport code, name, or city
+            search_text = f"{airport_code} {name} {city}".lower()
+            if q.lower() in search_text:
+                results.append({
+                    "icao": airport_code,
+                    "name": name,
+                    "city": city,
+                    "country": country
+                })
                 
-                # Only include airports with ICAO codes
-                if not icao:
-                    continue
-                
-                # Search in ICAO code, name, or city
-                search_text = f"{icao} {name} {city}".lower()
-                if q.lower() in search_text:
-                    results.append({
-                        "icao": icao,
-                        "name": name,
-                        "city": city,
-                        "country": country
-                    })
+                # Limit results to 20 for performance
+                if len(results) >= 20:
+                    break
                     
-                    # Limit results to 20 for performance
-                    if len(results) >= 20:
-                        break
-                        
     except Exception as e:
-        print(f"Error reading airports file: {e}")
+        print(f"❌ Error reading airports data: {e}")
         return []
     
+    print(f"✅ Found {len(results)} airports for query '{q}'")
     return results
 
 @app.post("/analyze-route", response_model=RouteAnalysisResponse)
