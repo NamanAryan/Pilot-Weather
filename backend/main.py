@@ -39,7 +39,7 @@ from services.airports import get_airport_info
 from services.summary import summarize_weather
 
 # Get allowed origins from environment
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,https://pilot-weather-frontend.vercel.app,https://www.pilot-weather-frontend.vercel.app").split(",")
 
 app = FastAPI(
     title="Aviation Pre-Flight Assistant",
