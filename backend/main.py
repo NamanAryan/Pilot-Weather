@@ -53,9 +53,9 @@ app = FastAPI(
 app.add_middleware(
     TrustedHostMiddleware, 
     allowed_hosts=[
-        "https://pilot-weather-backend.onrender.com",
-        "https://pilot-weather-frontend.vercel.app", 
-        "https://www.pilot-weather-frontend.vercel.app"
+        "pilot-weather-backend.onrender.com",
+        "pilot-weather-frontend.vercel.app", 
+        "www.pilot-weather-frontend.vercel.app"
     ]
 )
 
