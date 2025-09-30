@@ -44,7 +44,7 @@ export function AirportAutocomplete({
     const timeoutId = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`http://localhost:8000/airports/search?q=${encodeURIComponent(value)}`);
+        const response = await fetch(`https://pilot-weather-frontend.vercel.app/airports/search?q=${encodeURIComponent(value)}`);
         const data = await response.json();
         setAirports(data);
         setIsOpen(data.length > 0);

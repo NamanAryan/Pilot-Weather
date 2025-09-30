@@ -1116,7 +1116,7 @@ export default function FlightDetail() {
       if (!route) return;
       try {
         const resp = await fetch(
-          `http://localhost:8000/airport-info?codes=${encodeURIComponent(
+          `https://pilot-weather-frontend.vercel.app/airport-info?codes=${encodeURIComponent(
             route
           )}`
         );
@@ -1145,7 +1145,7 @@ export default function FlightDetail() {
       (window as any).__briefingRouteLoaded = false;
       (window as any).__briefingRouteError = undefined;
       const airports = route.trim().split(/\s+/);
-      const response = await fetch("http://localhost:8000/analyze-route", {
+      const response = await fetch("https://pilot-weather-frontend.vercel.app/analyze-route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ airports }),
