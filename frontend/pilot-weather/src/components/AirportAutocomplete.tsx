@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Check, X } from "lucide-react";
-import { API_ENDPOINTS } from "../config";
 
 interface Airport {
   icao: string;
@@ -29,7 +28,7 @@ export function AirportAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isValid, setIsValid] = useState(false);
-  const [selectedAirport, setSelectedAirport] = useState<Airport | null>(null);
+  const [, setSelectedAirport] = useState<Airport | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
