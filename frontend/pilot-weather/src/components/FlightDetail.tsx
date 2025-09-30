@@ -1122,7 +1122,7 @@ export default function FlightDetail() {
       if (!route) return;
       try {
         const resp = await fetch(
-          `${apiBaseUrl}/airport-info?codes=${encodeURIComponent(route)}`
+          `https://pilot-weather-backend.onrender.com/airport-info?codes=${encodeURIComponent(route)}`
         );
         const data = await resp.json();
         const map: Record<string, string | null> = {};
@@ -1149,7 +1149,7 @@ export default function FlightDetail() {
       (window as any).__briefingRouteLoaded = false;
       (window as any).__briefingRouteError = undefined;
       const airports = route.trim().split(/\s+/);
-      const response = await fetch(`${apiBaseUrl}/analyze-route`, {
+      const response = await fetch(`https://pilot-weather-backend.onrender.com/analyze-route`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ airports }),
