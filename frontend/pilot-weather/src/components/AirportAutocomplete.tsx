@@ -33,7 +33,9 @@ export function AirportAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    "https://pilot-weather-backend.onrender.com";
   // Debounced search
   useEffect(() => {
     if (value.length < 2) {
