@@ -41,6 +41,11 @@ from services.summary import summarize_weather
 # Get allowed origins from environment
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,https://pilot-weather-frontend.vercel.app,https://www.pilot-weather-frontend.vercel.app,https://weathaware.vercel.app,https://www.weathaware.vercel.app").split(",")
 
+# Log CORS configuration for debugging
+logger.info("🌐 CORS Configuration:")
+logger.info(f"   ALLOWED_ORIGINS env var: {os.getenv('ALLOWED_ORIGINS', 'NOT SET')}")
+logger.info(f"   Parsed allowed origins: {allowed_origins}")
+
 app = FastAPI(
     title="Aviation Pre-Flight Assistant",
     description="AI-powered weather briefing and hazard analysis system for pilots",
@@ -66,7 +71,22 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Add explicit OPTIONS handler for preflight requests
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    """Handle CORS preflight requests"""
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 @app.get("/")
 @app.head("/")
