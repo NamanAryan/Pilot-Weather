@@ -1,31 +1,25 @@
 {
-  "version": 2,
-  "name": "pilot-weather",
-  "builds": [
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
+  "headers": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://pilot-weather-backend.onrender.com/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ],
   "env": {
     "VITE_API_BASE_URL": "https://pilot-weather-backend.onrender.com"
-  },
-  "functions": {
-    "app/api/**/*.py": {
-      "runtime": "python3.9"
-    }
   }
 }
