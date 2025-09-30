@@ -1,8 +1,5 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.PROD 
-    ? 'https://pilot-weather-backend.onrender.com' 
-    : 'http://localhost:8000');
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pilot-weather-backend.onrender.com';
 
 // Force production URL if we're on Vercel domain or if explicitly set
 const isVercelDomain = window.location.hostname.includes('vercel.app');
