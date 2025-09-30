@@ -1112,15 +1112,17 @@ export default function FlightDetail() {
     };
     if (id || search.get("route")) load();
   }, [id, search]);
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    "https://pilot-weather-backend.onrender.com";
+
+  console.log("FlightDetail apiBaseUrl:", apiBaseUrl);
   useEffect(() => {
     const loadNames = async () => {
       if (!route) return;
       try {
         const resp = await fetch(
-          `${apiBaseUrl}/airport-info?codes=${encodeURIComponent(
-            route
-          )}`
+          `${apiBaseUrl}/airport-info?codes=${encodeURIComponent(route)}`
         );
         const data = await resp.json();
         const map: Record<string, string | null> = {};
