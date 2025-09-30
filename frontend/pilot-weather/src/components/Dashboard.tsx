@@ -118,7 +118,7 @@ const Dashboard = () => {
   // Validation state
   const [departureValid, setDepartureValid] = useState(false);
   const [arrivalValid, setArrivalValid] = useState(false);
-  const [intermediatesValid] = useState<boolean[]>([]);
+  const [, setIntermediatesValid] = useState<boolean[]>([]);
   const [searchDepartureValid, setSearchDepartureValid] = useState(false);
   const [searchArrivalValid, setSearchArrivalValid] = useState(false);
   const navigate = useNavigate();
@@ -258,6 +258,7 @@ const Dashboard = () => {
     setTimeout(() => {
       // Create route string from individual inputs
       const routeParts = [dep, ...mids, arr].filter(Boolean);
+      console.log("Route parts:", routeParts);
 
       // Navigate to detail page using route string
       briefFromFlight({
