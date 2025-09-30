@@ -8,9 +8,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
 const isVercelDomain = window.location.hostname.includes('vercel.app');
 const isProductionBackend = import.meta.env.VITE_USE_PRODUCTION_BACKEND === 'true';
 
-export const FINAL_API_BASE_URL = (isVercelDomain || isProductionBackend) 
-  ? 'https://pilot-weather-backend.onrender.com' 
-  : API_BASE_URL;
+export const FINAL_API_BASE_URL = 'https://pilot-weather-backend.onrender.com';
 
 // Debug logging
 console.log('Environment check:', {
