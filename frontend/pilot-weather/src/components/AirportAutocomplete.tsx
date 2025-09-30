@@ -34,6 +34,7 @@ export function AirportAutocomplete({
 
   // Debounced search
   useEffect(() => {
+    console.log("AirportAutocomplete useEffect triggered with value:", value);
     if (value.length < 2) {
       setAirports([]);
       setIsValid(false);
@@ -99,6 +100,7 @@ export function AirportAutocomplete({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value.toUpperCase();
+    console.log("AirportAutocomplete input changed:", newValue);
     onChange(newValue);
     setSelectedAirport(null);
   };
