@@ -4,17 +4,23 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
     ? 'https://pilot-weather-backend.onrender.com' 
     : 'http://localhost:8000');
 
-// Force production URL if we're on Vercel domain
+// Force production URL if we're on Vercel domain or if explicitly set
 const isVercelDomain = window.location.hostname.includes('vercel.app');
-export const FINAL_API_BASE_URL = isVercelDomain ? 'https://pilot-weather-backend.onrender.com' : API_BASE_URL;
+const isProductionBackend = import.meta.env.VITE_USE_PRODUCTION_BACKEND === 'true';
+
+export const FINAL_API_BASE_URL = (isVercelDomain || isProductionBackend) 
+  ? 'https://pilot-weather-backend.onrender.com' 
+  : API_BASE_URL;
 
 // Debug logging
 console.log('Environment check:', {
   PROD: import.meta.env.PROD,
   VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  VITE_USE_PRODUCTION_BACKEND: import.meta.env.VITE_USE_PRODUCTION_BACKEND,
   API_BASE_URL: API_BASE_URL,
   FINAL_API_BASE_URL: FINAL_API_BASE_URL,
   isVercelDomain: isVercelDomain,
+  isProductionBackend: isProductionBackend,
   origin: window.location.origin,
   hostname: window.location.hostname
 });
