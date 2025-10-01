@@ -26,9 +26,6 @@ logger.info(f"   GEMINI_API_KEY: {'✅' if os.getenv('GEMINI_API_KEY') else '❌
 logger.info(f"   SUPABASE_URL: {'✅' if os.getenv('SUPABASE_URL') else '❌ MISSING'}")
 logger.info(f"   SUPABASE_ANON_KEY: {'✅' if os.getenv('SUPABASE_ANON_KEY') else '❌ MISSING'}")
 
-# Check AVWX API permissions
-check_avwx_permissions()
-
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -40,6 +37,9 @@ from services.route import fetch_route, map_hazards
 from services.airports import get_alternate_airports, get_top3_alternate_airports_by_category
 from services.airports import get_airport_info
 from services.summary import summarize_weather
+
+# Check AVWX API permissions after imports
+check_avwx_permissions()
 
 # Get allowed origins from environment
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,https://pilot-weather-frontend.vercel.app,https://www.pilot-weather-frontend.vercel.app,https://weathaware.vercel.app,https://www.weathaware.vercel.app").split(",")
